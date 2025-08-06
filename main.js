@@ -9,8 +9,8 @@ function loadFallbackXLSX() {
     document.head.appendChild(localScript);
 }
 
+// Load forms and attach event listeners
 document.addEventListener('DOMContentLoaded', () => {
-    // Load form.html into sections
     const sections = [
         'audit-5s',
         'audit-gemba',
@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(html => {
                 const sectionHtml = html.replace(/id="([^"]+)"/g, (match, id) => `id="${section}-${id}"`);
                 document.getElementById(section).innerHTML = sectionHtml.replace(/{{section}}/g, section);
-                // Attach submit button listeners after form is loaded
                 const submitButton = document.querySelector(`#${section} .submit-btn[data-section="${section}"]`);
                 if (submitButton) {
                     submitButton.addEventListener('click', () => submitForm(section));
@@ -36,13 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => console.error(`Failed to load form.html for ${section}:`, err));
     });
 
-    // Login button listener
+    // Login button
     const loginButton = document.getElementById('login-button');
     if (loginButton) {
         loginButton.addEventListener('click', handleLogin);
     }
 
-    // Sidebar section buttons
+    // Sidebar navigation
     const sectionButtons = document.querySelectorAll('.section-btn');
     sectionButtons.forEach(button => {
         button.addEventListener('click', () => showSection(button.dataset.section));
@@ -65,4 +64,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeModalButton) {
         closeModalButton.addEventListener('click', closeModal);
     }
+
+    // Archive table buttons (view/delete)
+    const archiveTableBody = document.getElementById('archive-table-body');
+    if (archiveTableBody) {
+        archiveTableBody.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target.classList.contains('view-btn')) {
+                const index = target.dataset.index;
+                if (index) viewSubmission(parseInt(index));
+            } else if (target.classList.contains('delete-btn')) {
+                const index = target.dataset.index;
+                if (index) deleteSubmission(parseInt(index));
+            }
+        });
+    }
 });
+
+// Attach fallback for SheetJS (loaded dynamically if CDN fails)
+const sheetJSScript = document.querySelector('script[src*="xlsx.full.min.js"]');
+if (sheetJSScript) {
+    sheetJSScript.addEventListener('error', loadFallbackXLSX);
+}
