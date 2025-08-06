@@ -1,13 +1,13 @@
 let sectionsLoaded = 0;
-const totalSections = 8; // audit-5s, audit-gemba, emplissage-tableau, taux-absenteisme, etc.
+const totalSections = 8; // Number of sections to load
 
 function loadFallbackXLSX() {
     console.warn('Primary SheetJS CDN failed, trying local fallback...');
     const localScript = document.createElement('script');
     localScript.src = 'xlsx.full.min.js';
     localScript.onerror = () => {
-        console.error('Local SheetJS fallback failed...');
-        alert('Failed to load SheetJS library...');
+        console.error('Local SheetJS fallback failed. Ensure xlsx.full.min.js (version 0.20.3) is in the same directory.');
+        alert('Failed to load SheetJS library. Please download xlsx.full.min.js (version 0.20.3) from https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3/package/dist/xlsx.full.min.js.');
     };
     document.head.appendChild(localScript);
 }
@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     sectionsLoaded++;
                     if (sectionsLoaded === totalSections && window.pendingLogin) {
                         showSection('dashboard-section');
+                        window.pendingLogin = false;
                     }
                 } else {
                     console.error(`Section container not found: ${section}`);
@@ -49,9 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Login button
     const loginButton = document.getElementById('login-button');
     if (loginButton) {
-        loginButton.addEventListener('click', () => {
-            handleLogin();
-        });
+        loginButton.addEventListener('click', handleLogin);
     }
 
     // Sidebar navigation
@@ -98,4 +97,25 @@ document.addEventListener('DOMContentLoaded', () => {
 const sheetJSScript = document.querySelector('script[src*="xlsx.full.min.js"]');
 if (sheetJSScript) {
     sheetJSScript.addEventListener('error', loadFallbackXLSX);
+}
+
+// Placeholder for missing functions
+function applyFilters() {
+    console.log('Applying filters...');
+    // Add filter logic here
+}
+
+function closeModal() {
+    const modal = document.getElementById('details-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function viewSubmission(index) {
+    console.log(`Viewing submission ${index}`);
+    // Add view logic here
+}
+
+function deleteSubmission(index) {
+    console.log(`Deleting submission ${index}`);
+    // Add delete logic here
 }
