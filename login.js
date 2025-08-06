@@ -9,14 +9,13 @@ function handleLogin() {
         if (loginContainer && dashboard) {
             loginContainer.classList.add('hidden');
             dashboard.classList.remove('hidden');
-            window.pendingLogin = true; // Signal login pending
+            window.pendingLogin = true;
             const section = document.getElementById('dashboard-section');
             if (section) {
                 showSection('dashboard-section');
                 window.pendingLogin = false;
             } else {
                 console.log('Waiting for sections to load...');
-                // main.js will call showSection when ready
             }
         } else {
             console.error('Login container or dashboard not found');
