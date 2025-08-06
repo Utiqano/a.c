@@ -1,5 +1,5 @@
 let sectionsLoaded = 0;
-const totalSections = 8; // Number of sections to load
+const totalSections = 8;
 
 function loadFallbackXLSX() {
     console.warn('Primary SheetJS CDN failed, trying local fallback...');
@@ -13,6 +13,7 @@ function loadFallbackXLSX() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing sections...');
     const sections = [
         'audit-5s',
         'audit-gemba',
@@ -24,60 +25,86 @@ document.addEventListener('DOMContentLoaded', () => {
         'top-action-5s'
     ];
     sections.forEach(section => {
+        const sectionElement = document.getElementById(section);
+        if (!sectionElement) {
+            console.error(`Section container not found in index.html: ${section}`);
+            return;
+        }
         fetch('form.html')
-            .then(response => response.text())
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}: Failed to fetch form.html`);
+                return response.text();
+            })
             .then(html => {
+                console.log(`Loading form.html for section: ${section}`);
                 const sectionHtml = html.replace(/id="([^"]+)"/g, (match, id) => `id="${section}-${id}"`);
-                const sectionElement = document.getElementById(section);
-                if (sectionElement) {
-                    sectionElement.innerHTML = sectionHtml.replace(/{{section}}/g, section);
-                    const submitButton = document.querySelector(`#${section} .submit-btn[data-section="${section}"]`);
-                    if (submitButton) {
-                        submitButton.addEventListener('click', () => submitForm(section));
-                    }
-                    sectionsLoaded++;
-                    if (sectionsLoaded === totalSections && window.pendingLogin) {
+                sectionElement.innerHTML = sectionHtml.replace(/{{section}}/g, section);
+                const submitButton = document.querySelector(`#${section} .submit-btn[data-section="${section}"]`);
+                if (submitButton) {
+                    submitButton.addEventListener('click', () => {
+                        console.log(`Submit button clicked for section: ${section}`);
+                        submitForm(section);
+                    });
+                } else {
+                    console.error(`Submit button not found for section: ${section}`);
+                }
+                sectionsLoaded++;
+                console.log(`Sections loaded: ${sectionsLoaded}/${totalSections}`);
+                if (sectionsLoaded === totalSections) {
+                    console.log('All sections loaded');
+                    updateCharts();
+                    updateArchiveTable();
+                    if (window.pendingLogin) {
                         showSection('dashboard-section');
                         window.pendingLogin = false;
                     }
-                } else {
-                    console.error(`Section container not found: ${section}`);
                 }
             })
-            .catch(err => console.error(`Failed to load form.html for ${section}:`, err));
+            .catch(err => {
+                console.error(`Failed to load form.html for ${section}:`, err);
+                sectionElement.innerHTML = `<p>Error loading form for ${section}. Please ensure form.html exists.</p>`;
+            });
     });
 
-    // Login button
     const loginButton = document.getElementById('login-button');
     if (loginButton) {
-        loginButton.addEventListener('click', handleLogin);
+        loginButton.addEventListener('click', () => {
+            console.log('Login button clicked');
+            handleLogin();
+        });
+    } else {
+        console.error('Login button not found');
     }
 
-    // Sidebar navigation
     const sectionButtons = document.querySelectorAll('.section-btn');
     sectionButtons.forEach(button => {
-        button.addEventListener('click', () => showSection(button.dataset.section));
+        button.addEventListener('click', () => {
+            console.log(`Section button clicked: ${button.dataset.section}`);
+            showSection(button.dataset.section);
+        });
     });
 
-    // Filter button
     const filterButton = document.getElementById('apply-filters-button');
     if (filterButton) {
-        filterButton.addEventListener('click', applyFilters);
+        filterButton.addEventListener('click', () => {
+            console.log('Apply filters button clicked');
+            applyFilters();
+        });
     }
 
-    // Export button
     const exportButton = document.getElementById('export-excel-button');
     if (exportButton) {
-        exportButton.addEventListener('click', exportExcel);
+        exportButton.addEventListener('click', () => {
+            console.log('Export button clicked');
+            exportExcel();
+        });
     }
 
-    // Modal close button
     const closeModalButton = document.getElementById('close-modal-button');
     if (closeModalButton) {
         closeModalButton.addEventListener('click', closeModal);
     }
 
-    // Archive table buttons
     const archiveTableBody = document.getElementById('archive-table-body');
     if (archiveTableBody) {
         archiveTableBody.addEventListener('click', (event) => {
@@ -91,31 +118,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Initial chart and table update
+    updateCharts();
+    updateArchiveTable();
 });
 
-// Attach fallback for SheetJS
 const sheetJSScript = document.querySelector('script[src*="xlsx.full.min.js"]');
 if (sheetJSScript) {
     sheetJSScript.addEventListener('error', loadFallbackXLSX);
-}
-
-// Placeholder for missing functions
-function applyFilters() {
-    console.log('Applying filters...');
-    // Add filter logic here
-}
-
-function closeModal() {
-    const modal = document.getElementById('details-modal');
-    if (modal) modal.classList.add('hidden');
-}
-
-function viewSubmission(index) {
-    console.log(`Viewing submission ${index}`);
-    // Add view logic here
-}
-
-function deleteSubmission(index) {
-    console.log(`Deleting submission ${index}`);
-    // Add delete logic here
 }
