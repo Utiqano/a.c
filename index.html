@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com;">
+    <title>CRRE Audit Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script>
+        function loadFallbackXLSX() {
+            console.warn('Primary SheetJS CDN failed, trying local fallback...');
+            const localScript = document.createElement('script');
+            localScript.src = 'xlsx.full.min.js';
+            localScript.onerror = () => {
+                console.error('Local SheetJS fallback failed. Ensure xlsx.full.min.js (version 0.21.0) is in the same directory as index.html. Download it from https://unpkg.com/xlsx@0.21.0/dist/xlsx.full.min.js.');
+                alert('Failed to load SheetJS library. Please download xlsx.full.min.js (version 0.21.0) from https://unpkg.com/xlsx@0.21.0/dist/xlsx.full.min.js, place it in the same directory as index.html, check your internet connection, and disable ad-blockers.');
+            };
+            document.head.appendChild(localScript);
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.21.0/dist/xlsx.full.min.js" onerror="loadFallbackXLSX()"></script>
+    <script src="login.js"></script>
+    <script src="form.js"></script>
+</head>
+<body>
+    <div id="login-container" class="login-container">
+        <div class="login-box">
+            <h1>CRRE Audit Dashboard</h1>
+            <p>Sign in to access your dashboard</p>
+            <div>
+                <div class="form-group">
+                    <input type="email" id="login-email" placeholder=" " required>
+                    <label for="login-email">Email</label>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="login-password" placeholder=" " required>
+                    <label for="login-password">Password</label>
+                </div>
+                <p id="error" class="error hidden"></p>
+                <button onclick="handleLogin()">Sign In</button>
+            </div>
+        </div>
+    </div>
+    <div id="dashboard" class="container hidden">
+        <div class="sidebar">
+            <h2>CRRE Dashboard</h2>
+            <ul>
+                <li><button onclick="showSection('dashboard-section')" class="active">Dashboard</button></li>
+                <li><button onclick="showSection('archive-section')">Archive</button></li>
+                <li><button onclick="showSection('audit-5s')">Audit 5S</button></li>
+                <li><button onclick="showSection('audit-gemba')">Audit Gemba</button></li>
+                <li><button onclick="showSection('emplissage-tableau')">TAU Emplissage Tableau de Bord</button></li>
+                <li><button onclick="showSection('taux-absenteisme')">Taux Absenteisme</button></li>
+                <li><button onclick="showSection('taux-realisation-gemba')">Taux Realisation Audit Gemba</button></li>
+                <li><button onclick="showSection('taux-realisation-5s')">Taux Realisation 5S</button></li>
+                <li><button onclick="showSection('top-action-gemba')">Top Action Gemba</button></li>
+                <li><button onclick="showSection('top-action-5s')">Top Action 5S</button></li>
+            </ul>
+        </div>
+        <div class="content">
+            <div id="dashboard-section" class="section">
+                <h2>Dashboard</h2>
+                <div class="filter-container">
+                    <div class="form-group">
+                        <label for="dashboard-filter-uap">Filter by UAP</label>
+                        <input type="text" id="dashboard-filter-uap" placeholder="Enter UAP">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-week">Filter by Week</label>
+                        <input type="number" id="filter-week" placeholder="Enter Week">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-date">Filter by Date</label>
+                        <input type="date" id="filter-date">
+                    </div>
+                    <div class="form-group">
+                        <button onclick="applyFilters()">Apply Filters</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3>Audit 5S</h3>
+                    <canvas id="chart-audit-5s"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Audit Gemba</h3>
+                    <canvas id="chart-audit-gemba"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>TAU Emplissage Tableau de Bord</h3>
+                    <canvas id="chart-emplissage-tableau"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Taux Absenteisme</h3>
+                    <canvas id="chart-taux-absenteisme"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Taux Realisation Gemba</h3>
+                    <canvas id="chart-taux-realisation-gemba"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Taux Realisation 5S</h3>
+                    <canvas id="chart-taux-realisation-5s"></canvas>
+                </div>
+                <div class="action-table">
+                    <h3>Top Action Gemba</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Line</th>
+                                <th>Action 1</th>
+                                <th>Action 2</th>
+                                <th>Action 3</th>
+                                <th>Action 4</th>
+                                <th>Action 5</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top-action-gemba-table"></tbody>
+                    </table>
+                </div>
+                <div class="action-table">
+                    <h3>Top Action 5S</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Line</th>
+                                <th>Action 1</th>
+                                <th>Action 2</th>
+                                <th>Action 3</th>
+                                <th>Action 4</th>
+                                <th>Action 5</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top-action-5s-table"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="archive-section" class="section hidden">
+                <h2>Archive</h2>
+                <div class="export-container">
+                    <button onclick="exportExcel()">Export All Archives</button>
+                </div>
+                <table class="archive-table">
+                    <thead>
+                        <tr>
+                            <th>Section</th>
+                            <th>Timestamp</th>
+                            <th>Key Data</th>
+                            <th>UAP</th>
+                            <th>Week</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="archive-table-body"></tbody>
+                </table>
+            </div>
+            <div id="audit-5s" class="section hidden"></div>
+            <div id="audit-gemba" class="section hidden"></div>
+            <div id="emplissage-tableau" class="section hidden"></div>
+            <div id="taux-absenteisme" class="section hidden"></div>
+            <div id="taux-realisation-gemba" class="section hidden"></div>
+            <div id="taux-realisation-5s" class="section hidden"></div>
+            <div id="top-action-gemba" class="section hidden"></div>
+            <div id="top-action-5s" class="section hidden"></div>
+        </div>
+        <div id="details-modal" class="modal">
+            <div class="modal-content">
+                <h3>Submission Details</h3>
+                <pre id="modal-details"></pre>
+                <button onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sections = [
+                'audit-5s',
+                'audit-gemba',
+                'emplissage-tableau',
+                'taux-absenteisme',
+                'taux-realisation-gemba',
+                'taux-realisation-5s',
+                'top-action-gemba',
+                'top-action-5s'
+            ];
+            sections.forEach(section => {
+                fetch('form.html')
+                    .then(response => response.text())
+                    .then(html => {
+                        // Replace IDs with section-specific prefixes
+                        const sectionHtml = html.replace(/id="([^"]+)"/g, (match, id) => `id="${section}-${id}"`);
+                        document.getElementById(section).innerHTML = sectionHtml.replace(/{{section}}/g, section);
+                    })
+                    .catch(err => console.error(`Failed to load form.html for ${section}:`, err));
+            });
+        });
+    </script>
+</body>
+</html>
