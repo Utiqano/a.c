@@ -9,21 +9,10 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-    <script>
-        function loadFallbackXLSX() {
-            console.warn('Primary SheetJS CDN failed, trying local fallback...');
-            const localScript = document.createElement('script');
-            localScript.src = 'xlsx.full.min.js';
-            localScript.onerror = () => {
-                console.error('Local SheetJS fallback failed. Ensure xlsx.full.min.js (version 0.21.0) is in the same directory as index.html. Download it from https://unpkg.com/xlsx@0.21.0/dist/xlsx.full.min.js.');
-                alert('Failed to load SheetJS library. Please download xlsx.full.min.js (version 0.21.0) from https://unpkg.com/xlsx@0.21.0/dist/xlsx.full.min.js, place it in the same directory as index.html, check your internet connection, and disable ad-blockers.');
-            };
-            document.head.appendChild(localScript);
-        }
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.21.0/dist/xlsx.full.min.js" onerror="loadFallbackXLSX()"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.21.0/dist/xlsx.full.min.js"></script>
     <script src="login.js"></script>
     <script src="form.js"></script>
+    <script src="main.js"></script>
 </head>
 <body>
     <div id="login-container" class="login-container">
@@ -40,7 +29,7 @@
                     <label for="login-password">Password</label>
                 </div>
                 <p id="error" class="error hidden"></p>
-                <button onclick="handleLogin()">Sign In</button>
+                <button id="login-button">Sign In</button>
             </div>
         </div>
     </div>
@@ -48,16 +37,16 @@
         <div class="sidebar">
             <h2>CRRE Dashboard</h2>
             <ul>
-                <li><button onclick="showSection('dashboard-section')" class="active">Dashboard</button></li>
-                <li><button onclick="showSection('archive-section')">Archive</button></li>
-                <li><button onclick="showSection('audit-5s')">Audit 5S</button></li>
-                <li><button onclick="showSection('audit-gemba')">Audit Gemba</button></li>
-                <li><button onclick="showSection('emplissage-tableau')">TAU Emplissage Tableau de Bord</button></li>
-                <li><button onclick="showSection('taux-absenteisme')">Taux Absenteisme</button></li>
-                <li><button onclick="showSection('taux-realisation-gemba')">Taux Realisation Audit Gemba</button></li>
-                <li><button onclick="showSection('taux-realisation-5s')">Taux Realisation 5S</button></li>
-                <li><button onclick="showSection('top-action-gemba')">Top Action Gemba</button></li>
-                <li><button onclick="showSection('top-action-5s')">Top Action 5S</button></li>
+                <li><button data-section="dashboard-section" class="section-btn active">Dashboard</button></li>
+                <li><button data-section="archive-section" class="section-btn">Archive</button></li>
+                <li><button data-section="audit-5s" class="section-btn">Audit 5S</button></li>
+                <li><button data-section="audit-gemba" class="section-btn">Audit Gemba</button></li>
+                <li><button data-section="emplissage-tableau" class="section-btn">TAU Emplissage Tableau de Bord</button></li>
+                <li><button data-section="taux-absenteisme" class="section-btn">Taux Absenteisme</button></li>
+                <li><button data-section="taux-realisation-gemba" class="section-btn">Taux Realisation Audit Gemba</button></li>
+                <li><button data-section="taux-realisation-5s" class="section-btn">Taux Realisation 5S</button></li>
+                <li><button data-section="top-action-gemba" class="section-btn">Top Action Gemba</button></li>
+                <li><button data-section="top-action-5s" class="section-btn">Top Action 5S</button></li>
             </ul>
         </div>
         <div class="content">
@@ -77,7 +66,7 @@
                         <input type="date" id="filter-date">
                     </div>
                     <div class="form-group">
-                        <button onclick="applyFilters()">Apply Filters</button>
+                        <button id="apply-filters-button">Apply Filters</button>
                     </div>
                 </div>
                 <div class="chart-container">
@@ -142,7 +131,7 @@
             <div id="archive-section" class="section hidden">
                 <h2>Archive</h2>
                 <div class="export-container">
-                    <button onclick="exportExcel()">Export All Archives</button>
+                    <button id="export-excel-button">Export All Archives</button>
                 </div>
                 <table class="archive-table">
                     <thead>
@@ -172,33 +161,9 @@
             <div class="modal-content">
                 <h3>Submission Details</h3>
                 <pre id="modal-details"></pre>
-                <button onclick="closeModal()">Close</button>
+                <button id="close-modal-button">Close</button>
             </div>
         </div>
     </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const sections = [
-                'audit-5s',
-                'audit-gemba',
-                'emplissage-tableau',
-                'taux-absenteisme',
-                'taux-realisation-gemba',
-                'taux-realisation-5s',
-                'top-action-gemba',
-                'top-action-5s'
-            ];
-            sections.forEach(section => {
-                fetch('form.html')
-                    .then(response => response.text())
-                    .then(html => {
-                        // Replace IDs with section-specific prefixes
-                        const sectionHtml = html.replace(/id="([^"]+)"/g, (match, id) => `id="${section}-${id}"`);
-                        document.getElementById(section).innerHTML = sectionHtml.replace(/{{section}}/g, section);
-                    })
-                    .catch(err => console.error(`Failed to load form.html for ${section}:`, err));
-            });
-        });
-    </script>
 </body>
 </html>
