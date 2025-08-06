@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>CRRE Audit Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+        }
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 240px;
+            background-color: #1e293b;
+            color: white;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            transition: width 0.3s;
+        }
+        .sidebar h2 {
+            margin: 0 0 20px;
+            font-size: 1.5rem;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar li {
+            margin-bottom: 10px;
+        }
+        .sidebar button {
+            width: 100%;
+            padding: 12px;
+            background-color: #475569;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+        .sidebar button:hover {
+            background-color: #64748b;
+        }
+        .sidebar button.active {
+            background-color: #3b82f6;
+        }
+        .content {
+            flex: 1;
+            padding: 30px;
+            background-color: #ffffff;
+        }
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #4B5EAA 0%, #6B7280 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 2px, transparent 2px);
+            background-size: 20px 20px;
+            opacity: 0.3;
+        }
+        .login-box {
+            background-color: rgba(255, 255, 255, 0.98);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            position: relative;
+            animation: fadeIn 0.5s ease-in-out;
+            border: 2px solid #4B5EAA;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .login-box h1 {
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin-bottom: 10px;
+            font-weight: 700;
+            animation: bounceIn 0.6s ease-in-out;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            60% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        .login-box p {
+            color: #6b7280;
+            margin-bottom: 20px;
+            font-size: 1rem;
+        }
+        .login-box .form-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .login-box label {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            color: #6b7280;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            pointer-events: none;
+        }
+        .login-box input:focus + label,
+        .login-box input:not(:placeholder-shown) + label {
+            top: -8px;
+            left: 10px;
+            font-size: 0.8rem;
+            color: #4B5EAA;
+            background: white;
+            padding: 0 4px;
+        }
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px solid #D1D5DB;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        .login-box input:focus {
+            outline: none;
+            border-color: #4B5EAA;
+            box-shadow: 0 0 8px rgba(75, 94, 170, 0.3);
+            transform: scale(1.02);
+        }
+        .login-box button {
+            width: 100%;
+            padding: 12px;
+            background-color: #DC2626;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+        .login-box button:hover {
+            background-color: #FEE2E2;
+            color: #DC2626;
+            transform: scale(1.05);
+        }
+        .login-box button::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
+        }
+        .login-box button:active::after {
+            width: 200px;
+            height: 200px;
+            opacity: 0;
+        }
+        .error {
+            color: #DC2626;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #1e293b;
+            font-weight: 500;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .form-group select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+            background-repeat: no-repeat;
+            background-position-x: 98%;
+            background-position-y: 50%;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .form-group button {
+            padding: 12px 20px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+        .form-group button:hover {
+            background-color: #2563eb;
+        }
+        .hidden {
+            display: none;
+        }
+        .chart-container {
+            margin-bottom: 40px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .chart-container h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #1e293b;
+        }
+        canvas {
+            max-width: 100%;
+            width: 100%;
+        }
+        .filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .filter-container .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        .archive-table, .action-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+        .archive-table th, .archive-table td, .action-table th, .action-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #d1d5db;
+        }
+        .archive-table th, .action-table th {
+            background-color: #f8fafc;
+            color: #1e293b;
+            font-weight: 600;
+        }
+        .archive-table tr:hover, .action-table tr:hover {
+            background-color: #f1f5f9;
+        }
+        .archive-table button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .archive-table .view-btn {
+            background-color: #3b82f6;
+            color: white;
+            margin-right: 5px;
+        }
+        .archive-table .view-btn:hover {
+            background-color: #2563eb;
+        }
+        .archive-table .delete-btn {
+            background-color: #dc2626;
+            color: white;
+        }
+        .archive-table .delete-btn:hover {
+            background-color: #b91c1c;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            color: #1e293b;
+        }
+        .modal-content pre {
+            background-color: #f8fafc;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .modal-content button {
+            padding: 10px 20px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .modal-content button:hover {
+            background-color: #2563eb;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                padding: 15px;
+            }
+            .sidebar ul {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .sidebar li {
+                flex: 1;
+                min-width: 120px;
+            }
+            .content {
+                padding: 15px;
+            }
+            .login-box {
+                margin: 15px;
+                padding: 20px;
+                max-width: 90%;
+            }
+            .login-box input, .login-box button {
+                font-size: 0.9rem;
+                padding: 10px;
+            }
+            .login-box label {
+                font-size: 0.9rem;
+            }
+            .login-box input:focus + label,
+            .login-box input:not(:placeholder-shown) + label {
+                font-size: 0.7rem;
+                top: -6px;
+            }
+            .filter-container .form-group {
+                min-width: 100%;
+            }
+            .archive-table, .action-table {
+                display: block;
+                overflow-x: auto;
+            }
+            .archive-table th, .archive-table td, .action-table th, .action-table td {
+                min-width: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="login-container" class="login-container">
+        <div class="login-box">
+            <h1>CRRE Audit Dashboard</h1>
+            <p>Sign in to access your dashboard</p>
+            <div>
+                <div class="form-group">
+                    <input type="email" id="email" placeholder=" " required>
+                    <label for="email">Email</label>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="password" placeholder=" " required>
+                    <label for="password">Password</label>
+                </div>
+                <p id="error" class="error hidden"></p>
+                <button onclick="handleLogin()">Sign In</button>
+            </div>
+        </div>
+    </div>
+    <div id="dashboard" class="container hidden">
+        <div class="sidebar">
+            <h2>CRRE Dashboard</h2>
+            <ul>
+                <li><button onclick="showSection('dashboard-section')" class="active">Dashboard</button></li>
+                <li><button onclick="showSection('archive-section')">Archive</button></li>
+                <li><button onclick="showSection('audit-5s')">Audit 5S</button></li>
+                <li><button onclick="showSection('audit-gemba')">Audit Gemba</button></li>
+                <li><button onclick="showSection('emplissage-tableau')">TAU Emplissage Tableau de Bord</button></li>
+                <li><button onclick="showSection('taux-absenteisme')">Taux Absenteisme</button></li>
+                <li><button onclick="showSection('taux-realisation-gemba')">Taux Realisation Audit Gemba</button></li>
+                <li><button onclick="showSection('taux-realisation-5s')">Taux Realisation 5S</button></li>
+                <li><button onclick="showSection('top-action-gemba')">Top Action Gemba</button></li>
+                <li><button onclick="showSection('top-action-5s')">Top Action 5S</button></li>
+                <li><button onclick="handleLogout()">Logout</button></li>
+            </ul>
+        </div>
+        <div class="content">
+            <div id="dashboard-section" class="section">
+                <h2>Dashboard</h2>
+                <div class="filter-container">
+                    <div class="form-group">
+                        <label for="filter-uap">Filter by UAP</label>
+                        <input type="text" id="filter-uap" placeholder="Enter UAP">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-week">Filter by Week</label>
+                        <input type="number" id="filter-week" placeholder="Enter Week">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-date">Filter by Date</label>
+                        <input type="date" id="filter-date">
+                    </div>
+                    <div class="form-group">
+                        <button onclick="applyFilters()">Apply Filters</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3>Audit 5S</h3>
+                    <canvas id="chart-audit-5s"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Audit Gemba</h3>
+                    <canvas id="chart-audit-gemba"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>TAU Emplissage Tableau de Bord</h3>
+                    <canvas id="chart-emplissage-tableau"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Taux Absenteisme</h3>
+                    <canvas id="chart-taux-absenteisme"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Taux Realisation Gemba</h3>
+                    <canvas id="chart-taux-realisation-gemba"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Taux Realisation 5S</h3>
+                    <canvas id="chart-taux-realisation-5s"></canvas>
+                </div>
+                <div class="action-table">
+                    <h3>Top Action Gemba</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Line</th>
+                                <th>Action 1</th>
+                                <th>Action 2</th>
+                                <th>Action 3</th>
+                                <th>Action 4</th>
+                                <th>Action 5</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top-action-gemba-table"></tbody>
+                    </table>
+                </div>
+                <div class="action-table">
+                    <h3>Top Action 5S</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Line</th>
+                                <th>Action 1</th>
+                                <th>Action 2</th>
+                                <th>Action 3</th>
+                                <th>Action 4</th>
+                                <th>Action 5</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top-action-5s-table"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="archive-section" class="section hidden">
+                <h2>Archive</h2>
+                <table class="archive-table">
+                    <thead>
+                        <tr>
+                            <th>Section</th>
+                            <th>Timestamp</th>
+                            <th>Key Data</th>
+                            <th>UAP</th>
+                            <th>Week</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="archive-table-body"></tbody>
+                </table>
+            </div>
+            <div id="audit-5s" class="section hidden">
+                <h2>Audit 5S</h2>
+                <div>
+                    <div class="form-group">
+                        <label for="audit-5s-date">Date</label>
+                        <input type="date" id="audit-5s-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="audit-5s-week">Week</label>
+                        <input type="number" id="audit-5s-week" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="audit-5s-line">Line</label>
+                        <select id="audit-5s-line" required>
+                            <option value="" disabled selected>Select Line</option>
+                            <option value="F01">F01</option>
+                            <option value="F02">F02</option>
+                            <option value="F99">F99</option>
+                            <option value="F83">F83</option>
+                            <option value="F86">F86</option>
+                            <option value="F85">F85</option>
+                            <option value="L76">L76</option>
+                            <option value="L77">L77</option>
+                            <option value="Mure qualite">Mure qualite</option>
+                            <option value="magasinP2">magasinP2</option>
+                            <option value="Magasin P1">Magasin P1</option>
+                            <option value="magasin general">magasin general</option>
+                            <option value="L84">L84</option>
+                            <option value="F87">F87</option>
+                            <option value="F27">F27</option>
+                            <option value="F73">F73</option>
+                            <option value="F15">F15</option>
+                            <option value="skoda">skoda</option>
+                            <option value="L101">L101</option>
+                            <option value="L108">L108</option>
+                            <option value="A12">A12</option>
+                            <option value="F06">F06</option>
+                            <option value="50 T">50 T</option>
+                            <option value="80T">80T</option>
+                            <option value="120T">120T</option>
+                            <option value="125T">125T</option>
+                            <option value="520T">520T</option>
+                            <option value="400T">400T</option>
+                            <option value="420T">420T</option>
+                            <option value="Boy2">Boy2</option>
+                            <option value="Boy3">Boy3</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="audit-5s-uap">UAP</label>
+                        <select id="audit-5s-uap" required>
+                            <option value="" disabled selected>Select UAP</option>
+                            <option value="UAP1">UAP1</option>
+                            <option value="UAP2">UAP2</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="audit-5s-result">Result (%)</label>
+                        <input type="number" id="audit-5s-result" required min="0" max="100">
+                    </div>
+                    <button onclick="submitForm('Audit 5S', ['audit-5s-date', 'audit-5s-week', 'audit-5s-line', 'audit-5s-uap', 'audit-5s-result'])">Submit</button>
+                </div>
+            </div>
+            <div id="audit-gemba" class="section hidden">
+                <h2>Audit Gemba</h2>
+                <div>
+                    <div class="form-group">
+                        <label for="audit-gemba-date">Date</label>
+                        <input type="date" id="audit-gemba-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="audit-gemba-week">Week</label>
+                        <input type="number" id="audit-gemba-week" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="audit-gemba-line">Line</label>
+                        <select id="audit-gemba-line" required>
+                            <option value="" disabled selected>Select Line</option>
+                            <option value="F01">F01</option>
+                            <option value="F02">F02</option>
+                            <option value="F99">F99</option>
+                            <option value="F83">F83</option>
+                            <option value="F86">F86</option>
+                            <option value="F85">F85</option>
+                            <option value="L76">L76</option>
+                            <option value="L77">L77</option>
+                            <option value="Mure qualite">Mure qualite</option>
+                            <option value="magasinP2">magasinP2</option>
+                            <option value="Magasin P1">Magasin P1</option>
+                            <option value="magasin general">magasin general</option>
+                            <option value="L84">L84</option>
+                            <option value="F87">F87</option>
+                            <option value="F27">F27</option>
+                            <option value="F73">F73</option>
+                            <option value="F15">F15</option>
+                            <option value="skoda">skoda</option>
+                            <option value="L101">L101</option>
+                            <option value="L108">L108</option>
+                            <option value="A12">A12</option>
+                            <option value="F06">F06</option>
+                            <option value="50 T">50 T</option>
+                            <option value="80T">80T</option>
+                            <option value="120T">120T</option>
+                            <option value="125T">125T</option>
+                            <option value="520T">520T</option>
+                            <option value="400T">400T</option>
+                            <option value="420T">420T</option>
+                            <option value="Boy2">Boy2</option>
+                            <option value="Boy3">Boy3</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="audit-gemba-uap">UAP</label>
+                        <select id="audit-gemba-uap" required>
+                            <option value="" disabled selected>Select UAP</option>
+                            <option value="UAP1">UAP1</option>
+                            <option value="UAP2">UAP2</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="audit-gemba-result">Result (%)</label>
+                        <input type="number" id="audit-gemba-result" required min="0" max="100">
+                    </div>
+                    <button onclick="submitForm('Audit Gemba', ['audit-gemba-date', 'audit-gemba-week', 'audit-gemba-line', 'audit-gemba-uap', 'audit-gemba-result'])">Submit</button>
+                </div>
+            </div>
+            <div id="emplissage-tableau" class="section hidden">
+                <h2>TAU Emplissage Tableau de Bord</h2>
+                <div>
+                    <div class="form-group">
+                        <label for="emplissage-uap">UAP</label>
+                        <select id="emplissage-uap" required>
+                            <option value="" disabled selected>Select UAP</option>
+                            <option value="UAP1">UAP1</option>
+                            <option value="UAP2">UAP2</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="emplissage-percentage">Pourcentage</label>
+                        <input type="number" id="emplissage-percentage" required min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="emplissage-commentaire">Commentaire (Optional)</label>
+                        <textarea id="emplissage-commentaire"></textarea>
+                    </div>
+                    <button onclick="submitForm('Emplissage Tableau de Bord', ['emplissage-uap', 'emplissage-percentage', 'emplissage-commentaire'])">Submit</button>
+                </div>
+            </div>
+            <div id="taux-absenteisme" class="section hidden">
+                <h2>Taux Absenteisme</h2>
+                <div>
+                    <div class="form-group">
+                        <label for="absenteisme-date">Date</label>
+                        <input type="date" id="absenteisme-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="absenteisme-name">Name</label>
+                        <select id="absenteisme-name" required>
+                            <option value="" disabled selected>Select Name</option>
+                            <option value="Ahmed KHAMESI">Ahmed KHAMESI</option>
+                            <option value="Anis YAHYAOUI">Anis YAHYAOUI</option>
+                            <option value="Chemsi Mohamed">Chemsi Mohamed</option>
+                            <option value="Maugendre Jérémie">Maugendre Jérémie</option>
+                            <option value="Gargouri Mohamed Amine">Gargouri Mohamed Amine</option>
+                            <option value="Hafaiedh Sami">Hafaiedh Sami</option>
+                            <option value="Tarek Jaouada">Tarek Jaouada</option>
+                            <option value="Sghair Bedis">Sghair Bedis</option>
+                            <option value="Amine Aloui">Amine Aloui</option>
+                            <option value="Chakroun Sahbi">Chakroun Sahbi</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="absenteisme-week">Week</label>
+                        <input type="number" id="absenteisme-week" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="absenteisme-status">Status (1 = Present, 0 = Absent)</label>
+                        <select id="absenteisme-status" required>
+                            <option value="" disabled selected>Select Status</option>
+                            <option value="1">Present</option>
+                            <option value="0">Absent</option>
+                        </select>
+                    </div>
+                    <button onclick="submitForm('Taux Absenteisme', ['absenteisme-date', 'absenteisme-name', 'absenteisme-week', 'absenteisme-status'])">Submit</button>
+                </div>
+            </div>
+            <div id="taux-realisation-gemba" class="section hidden">
+                <h2>Taux Realisation Audit Gemba</h2>
+                <div>
+                    <div class="form-group">
+                        <label for="realisation-gemba-audits">Number of Audits per Week</label>
+                        <input type="number" id="realisation-gemba-audits" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="realisation-gemba-week">Week</label>
+                        <input type="number" id="realisation-gemba-week" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="realisation-gemba-realised">Number of Audits Realised</label>
+                        <input type="number" id="realisation-gemba-realised" required min="0">
+                    </div>
+                    <button onclick="submitForm('Taux Realisation Gemba', ['realisation-gemba-audits', 'realisation-gemba-week', 'realisation-gemba-realised'])">Submit</button>
+                </div>
+            </div>
+            <div id="taux-realisation-5s" class="section hidden">
+                <h2>Taux Realisation 5S</h2>
+                <div>
+                    <div class="form-group">
+                        <label for="realisation-5s-audits">Number of Audits per Week</label>
+                        <input type="number" id="realisation-5s-audits" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="realisation-5s-week">Week</label>
+                        <input type="number" id="realisation-5s-week" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="realisation-5s-realised">Number of Audits Realised</label>
+                        <input type="number" id="realisation-5s-realised" required min="0">
+                    </div>
+                    <button onclick="submitForm('Taux Realisation 5S', ['realisation-5s-audits', 'realisation-5s-week', 'realisation-5s-realised'])">Submit</button>
+                </div>
+            </div>
+            <div id="top-action-gemba" class="section hidden">
+                <h2>Top Action Gemba</h2>
+                <div>
+                    <div class="form-group">
+                        <label for="top-gemba-line">Line</label>
+                        <input type="text" id="top-gemba-line" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="top-gemba-action1">Action 1 (Optional)</label>
+                        <input type="text" id="top-gemba-action1">
+                    </div>
+                    <div class="form-group">
+                        <label for="top-gemba-action2">Action 2 (Optional)</label>
+                        <input type="text" id="top-gemba-action2">
+                    </div>
+                    <div class="form-group">
+                        <label for="top-gemba-action3">Action 3 (Optional)</label>
+                        <input type="text" id="top-gemba-action3">
+                    </div>
+                    <div class="form-group">
+                        <label for="top-gemba-action4">Action 4 (Optional)</label>
+                        <input type="text" id="top-gemba-action4">
+                    </div>
+                    <div class="form-group">
+                        <label for="top-gemba-action5">Action 5 (Optional)</label>
+                        <input type="text" id="top-gemba-action5">
+                    </div>
+                    <button onclick="submitForm('Top Action Gemba', ['top-gemba-line', 'top-gemba-action1', 'top-gemba-action2', 'top-gemba-action3', 'top-gemba-action4', 'top-gemba-action5'])">Submit</button>
+                </div>
+            </div>
+            <div id="top-action-5s" class="section hidden">
+                <h2>Top Action 5S</h2>
+                <div>
+                    <div class="form-group">
+                        <label for="top-5s-line">Line</label>
+                        <input type="text" id="top-5s-line" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="top-5s-action1">Action 1 (Optional)</label>
+                        <input type="text" id="top-5s-action1">
+                    </div>
+                    <div class="form-group">
+                        <label for="top-5s-action2">Action 2 (Optional)</label>
+                        <input type="text" id="top-5s-action2">
+                    </div>
+                    <div class="form-group">
+                        <label for="top-5s-action3">Action 3 (Optional)</label>
+                        <input type="text" id="top-5s-action3">
+                    </div>
+                    <div class="form-group">
+                        <label for="top-5s-action4">Action 4 (Optional)</label>
+                        <input type="text" id="top-5s-action4">
+                    </div>
+                    <div class="form-group">
+                        <label for="top-5s-action5">Action 5 (Optional)</label>
+                        <input type="text" id="top-5s-action5">
+                    </div>
+                    <button onclick="submitForm('Top Action 5S', ['top-5s-line', 'top-5s-action1', 'top-5s-action2', 'top-5s-action3', 'top-5s-action4', 'top-5s-action5'])">Submit</button>
+                </div>
+            </div>
+        </div>
+        <div id="details-modal" class="modal">
+            <div class="modal-content">
+                <h3>Submission Details</h3>
+                <pre id="modal-details"></pre>
+                <button onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import Firebase SDK
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyARc68C9RvqPHedrAtxJcZCUeZIEfn1XnA",
+            authDomain: "dashbord-10e83.firebaseapp.com",
+            projectId: "dashbord-10e83",
+            storageBucket: "dashbord-10e83.firebasestorage.app",
+            messagingSenderId: "1060154426951",
+            appId: "1:1060154426951:web:121e08b5f1ec5323f49362",
+            measurementId: "G-97L4PN4Q0P"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let chartInstances = {};
+
+        // Handle authentication state
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                showSection('dashboard-section');
+            } else {
+                document.getElementById('login-container').classList.remove('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+            }
+        });
+
+        window.handleLogin = function() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const error = document.getElementById('error');
+
+            signInWithEmailAndPassword(auth, email, password)
+                .then(() => {
+                    error.classList.add('hidden');
+                })
+                .catch(err => {
+                    error.textContent = err.message;
+                    error.classList.remove('hidden');
+                });
+        };
+
+        window.handleLogout = function() {
+            signOut(auth)
+                .catch(err => {
+                    alert('Error logging out: ' + err.message);
+                });
+        };
+
+        window.showSection = function(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById(sectionId).classList.remove('hidden');
+
+            document.querySelectorAll('.sidebar button').forEach(button => {
+                button.classList.remove('active');
+            });
+            document.querySelector(`button[onclick="showSection('${sectionId}')"]`).classList.add('active');
+
+            if (sectionId === 'dashboard-section') {
+                applyFilters();
+            } else if (sectionId === 'archive-section') {
+                updateArchiveTable();
+            }
+        };
+
+        window.submitForm = async function(sectionName, inputIds) {
+            try {
+                const user = auth.currentUser;
+                if (!user) throw new Error('User not authenticated');
+                const formData = { 
+                    section: sectionName, 
+                    timestamp: new Date().toISOString(),
+                    userId: user.uid 
+                };
+                inputIds.forEach(id => {
+                    const value = document.getElementById(id).value;
+                    formData[id] = value === null || value === undefined ? '' : String(value).replace(/[^\x20-\x7E]/g, '');
+                });
+
+                await addDoc(collection(db, 'submissions'), formData);
+                alert(`${sectionName} submitted successfully`);
+
+                document.querySelectorAll(`#${sectionName.toLowerCase().replace(/\s+/g, '-')}-section input, #${sectionName.toLowerCase().replace(/\s+/g, '-')}-section textarea, #${sectionName.toLowerCase().replace(/\s+/g, '-')}-section select`).forEach(input => {
+                    input.value = '';
+                });
+
+                applyFilters();
+                if (!document.getElementById('archive-section').classList.contains('hidden')) {
+                    updateArchiveTable();
+                }
+            } catch (err) {
+                alert('Error submitting form: ' + err.message);
+            }
+        };
+
+        function getBarColor(value) {
+            if (value >= 85) return 'rgba(75, 192, 192, 0.8)';
+            if (value >= 75) return 'rgba(255, 159, 64, 0.8)';
+            return 'rgba(255, 99, 132, 0.8)';
+        }
+
+        window.applyFilters = async function() {
+            const filterUAP = document.getElementById('filter-uap').value.toLowerCase();
+            const filterWeek = document.getElementById('filter-week').value;
+            const filterDate = document.getElementById('filter-date').value;
+
+            let query = collection(db, 'submissions');
+            const submissions = [];
+
+            try {
+                const snapshot = await getDocs(query);
+                snapshot.forEach(doc => {
+                    const data = { id: doc.id, ...doc.data() };
+                    let matchesUAP = true;
+                    let matchesWeek = true;
+                    let matchesDate = true;
+
+                    if (filterUAP) {
+                        matchesUAP = (data['audit-5s-uap'] || data['audit-gemba-uap'] || data['emplissage-uap'] || '').toLowerCase().includes(filterUAP);
+                    }
+                    if (filterWeek) {
+                        matchesWeek = (
+                            data['audit-5s-week'] === filterWeek ||
+                            data['audit-gemba-week'] === filterWeek ||
+                            data['absenteisme-week'] === filterWeek ||
+                            data['realisation-gemba-week'] === filterWeek ||
+                            data['realisation-5s-week'] === filterWeek
+                        );
+                    }
+                    if (filterDate) {
+                        matchesDate = (
+                            data['audit-5s-date'] === filterDate ||
+                            data['audit-gemba-date'] === filterDate ||
+                            data['absenteisme-date'] === filterDate
+                        );
+                    }
+
+                    if (matchesUAP && matchesWeek && matchesDate) {
+                        submissions.push(data);
+                    }
+                });
+
+                updateCharts(submissions);
+                updateActionTables(submissions);
+            } catch (err) {
+                alert('Error fetching submissions: ' + err.message);
+            }
+        };
+
+        function updateCharts(submissions) {
+            const chartConfigs = [
+                {
+                    id: 'chart-audit-5s',
+                    label: 'Audit 5S Result (%)',
+                    data: submissions
+                        .filter(s => s.section === 'Audit 5S')
+                        .map(s => ({
+                            x: s['audit-5s-week'] || s.timestamp,
+                            y: parseFloat(s['audit-5s-result']) || 0,
+                            line: s['audit-5s-line'] || '-',
+                            date: s['audit-5s-date'] || '-',
+                            uap: s['audit-5s-uap'] || '-'
+                        })),
+                    key: 'audit-5s-result'
+                },
+                {
+                    id: 'chart-audit-gemba',
+                    label: 'Audit Gemba Result (%)',
+                    data: submissions
+                        .filter(s => s.section === 'Audit Gemba')
+                        .map(s => ({
+                            x: s['audit-gemba-week'] || s.timestamp,
+                            y: parseFloat(s['audit-gemba-result']) || 0,
+                            line: s['audit-gemba-line'] || '-',
+                            date: s['audit-gemba-date'] || '-',
+                            uap: s['audit-gemba-uap'] || '-'
+                        })),
+                    key: 'audit-gemba-result'
+                },
+                {
+                    id: 'chart-emplissage-tableau',
+                    label: 'Emplissage Tableau Pourcentage (%)',
+                    data: submissions
+                        .filter(s => s.section === 'Emplissage Tableau de Bord')
+                        .map(s => ({
+                            x: s.timestamp,
+                            y: parseFloat(s['emplissage-percentage']) || 0
+                        })),
+                    key: 'emplissage-percentage'
+                },
+                {
+                    id: 'chart-taux-absenteisme',
+                    label: 'Taux Absenteisme Status (%)',
+                    data: submissions
+                        .filter(s => s.section === 'Taux Absenteisme')
+                        .map(s => ({
+                            x: s['absenteisme-week'] || s.timestamp,
+                            y: parseInt(s['absenteisme-status']) === 1 ? 100 : 0
+                        })),
+                    key: 'absenteisme-status'
+                },
+                {
+                    id: 'chart-taux-realisation-gemba',
+                    label: 'Taux Realisation Gemba (%)',
+                    data: submissions
+                        .filter(s => s.section === 'Taux Realisation Gemba')
+                        .map(s => ({
+                            x: s['realisation-gemba-week'] || s.timestamp,
+                            y: Math.min((parseFloat(s['realisation-gemba-realised']) / parseFloat(s['realisation-gemba-audits']) * 100) || 0, 100)
+                        })),
+                    key: 'realisation-gemba'
+                },
+                {
+                    id: 'chart-taux-realisation-5s',
+                    label: 'Taux Realisation 5S (%)',
+                    data: submissions
+                        .filter(s => s.section === 'Taux Realisation 5S')
+                        .map(s => ({
+                            x: s['realisation-5s-week'] || s.timestamp,
+                            y: Math.min((parseFloat(s['realisation-5s-realised']) / parseFloat(s['realisation-5s-audits']) * 100) || 0, 100)
+                        })),
+                    key: 'realisation-5s'
+                }
+            ];
+
+            chartConfigs.forEach(config => {
+                const ctx = document.getElementById(config.id).getContext('2d');
+                if (chartInstances[config.id]) {
+                    chartInstances[config.id].destroy();
+                }
+
+                const backgroundColors = config.data.map(data => getBarColor(data.y));
+
+                chartInstances[config.id] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: config.data.map(d => d.x),
+                        datasets: [{
+                            label: config.label,
+                            data: config.data.map(d => d.y),
+                            backgroundColor: backgroundColors,
+                            borderColor: backgroundColors.map(color => color.replace('0.8', '1')),
+                            borderWidth: 1,
+                            customData: config.data
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'Week or Timestamp' }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: { display: true, text: 'Percentage (%)' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: true },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const data = context.dataset.customData[context.dataIndex];
+                                        if (context.dataset.label.includes('Audit 5S') || context.dataset.label.includes('Audit Gemba')) {
+                                            return [
+                                                `${context.dataset.label}: ${context.raw.toFixed(2)}%`,
+                                                `Line: ${data.line}`,
+                                                `Date: ${data.date}`,
+                                                `Week: ${data.x}`,
+                                                `UAP: ${data.uap}`
+                                            ];
+                                        }
+                                        return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        async function updateActionTables(submissions) {
+            const gembaTbody = document.getElementById('top-action-gemba-table');
+            const fiveSTbody = document.getElementById('top-action-5s-table');
+            gembaTbody.innerHTML = '';
+            fiveSTbody.innerHTML = '';
+
+            const gembaSubmissions = submissions.filter(s => s.section === 'Top Action Gemba');
+            const fiveSSubmissions = submissions.filter(s => s.section === 'Top Action 5S');
+
+            gembaSubmissions.forEach(submission => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${new Date(submission.timestamp).toLocaleString()}</td>
+                    <td>${submission['top-gemba-line'] || '-'}</td>
+                    <td>${submission['top-gemba-action1'] || '-'}</td>
+                    <td>${submission['top-gemba-action2'] || '-'}</td>
+                    <td>${submission['top-gemba-action3'] || '-'}</td>
+                    <td>${submission['top-gemba-action4'] || '-'}</td>
+                    <td>${submission['top-gemba-action5'] || '-'}</td>
+                `;
+                gembaTbody.appendChild(row);
+            });
+
+            fiveSSubmissions.forEach(submission => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${new Date(submission.timestamp).toLocaleString()}</td>
+                    <td>${submission['top-5s-line'] || '-'}</td>
+                    <td>${submission['top-5s-action1'] || '-'}</td>
+                    <td>${submission['top-5s-action2'] || '-'}</td>
+                    <td>${submission['top-5s-action3'] || '-'}</td>
+                    <td>${submission['top-5s-action4'] || '-'}</td>
+                    <td>${submission['top-5s-action5'] || '-'}</td>
+                `;
+                fiveSTbody.appendChild(row);
+            });
+        }
+
+        window.updateArchiveTable = async function() {
+            const tbody = document.getElementById('archive-table-body');
+            tbody.innerHTML = '';
+            try {
+                const snapshot = await getDocs(collection(db, 'submissions'));
+                snapshot.forEach(doc => {
+                    const submission = { id: doc.id, ...doc.data() };
+                    const row = document.createElement('tr');
+                    const keyData = getKeyData(submission);
+                    row.innerHTML = `
+                        <td>${submission.section}</td>
+                        <td>${new Date(submission.timestamp).toLocaleString()}</td>
+                        <td>${keyData}</td>
+                        <td>${submission['audit-5s-uap'] || submission['audit-gemba-uap'] || submission['emplissage-uap'] || '-'}</td>
+                        <td>${submission['audit-5s-week'] || submission['audit-gemba-week'] || submission['absenteisme-week'] || submission['realisation-gemba-week'] || submission['realisation-5s-week'] || '-'}</td>
+                        <td>${submission['audit-5s-date'] || submission['audit-gemba-date'] || submission['absenteisme-date'] || '-'}</td>
+                        <td>
+                            <button class="view-btn" onclick="viewSubmission('${submission.id}')">View</button>
+                            <button class="delete-btn" onclick="deleteSubmission('${submission.id}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                alert('Error fetching archive: ' + err.message);
+            }
+        };
+
+        function getKeyData(submission) {
+            switch (submission.section) {
+                case 'Audit 5S':
+                    return `${submission['audit-5s-result']}%`;
+                case 'Audit Gemba':
+                    return `${submission['audit-gemba-result']}%`;
+                case 'Emplissage Tableau de Bord':
+                    return `${submission['emplissage-percentage']}%`;
+                case 'Taux Absenteisme':
+                    return submission['absenteisme-status'] === '1' ? 'Present' : 'Absent';
+                case 'Taux Realisation Gemba':
+                    return `${((parseFloat(submission['realisation-gemba-realised']) / parseFloat(submission['realisation-gemba-audits']) * 100) || 0).toFixed(2)}%`;
+                case 'Taux Realisation 5S':
+                    return `${((parseFloat(submission['realisation-5s-realised']) / parseFloat(submission['realisation-5s-audits']) * 100) || 0).toFixed(2)}%`;
+                case 'Top Action Gemba':
+                    return `${([submission['top-gemba-action1'], submission['top-gemba-action2'], submission['top-gemba-action3'], submission['top-gemba-action4'], submission['top-gemba-action5']].filter(a => a).length / 5 * 100).toFixed(2)}%`;
+                case 'Top Action 5S':
+                    return `${([submission['top-5s-action1'], submission['top-5s-action2'], submission['top-5s-action3'], submission['top-5s-action4'], submission['top-5s-action5']].filter(a => a).length / 5 * 100).toFixed(2)}%`;
+                default:
+                    return '-';
+            }
+        }
+
+        window.viewSubmission = async function(docId) {
+            try {
+                const docRef = doc(db, 'submissions', docId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    document.getElementById('modal-details').textContent = JSON.stringify({ id: docSnap.id, ...docSnap.data() }, null, 2);
+                    document.getElementById('details-modal').style.display = 'flex';
+                } else {
+                    alert('Submission not found');
+                }
+            } catch (err) {
+                alert('Error viewing submission: ' + err.message);
+            }
+        };
+
+        window.deleteSubmission = async function(docId) {
+            if (confirm('Are you sure you want to delete this submission?')) {
+                try {
+                    await deleteDoc(doc(db, 'submissions', docId));
+                    updateArchiveTable();
+                    applyFilters();
+                } catch (err) {
+                    alert('Error deleting submission: ' + err.message);
+                }
+            }
+        };
+
+        window.closeModal = function() {
+            document.getElementById('details-modal').style.display = 'none';
+        };
+    </script>
+</body>
+</html>
