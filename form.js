@@ -1,4 +1,5 @@
 function showSection(section) {
+    console.log(`Showing section: ${section}`);
     const sections = document.querySelectorAll('.section');
     sections.forEach(s => s.classList.add('hidden'));
     const activeSection = document.getElementById(section);
@@ -6,6 +7,7 @@ function showSection(section) {
         activeSection.classList.remove('hidden');
     } else {
         console.error(`Section not found: ${section}`);
+        alert(`Error: Section ${section} not found. Please refresh.`);
         return;
     }
     const buttons = document.querySelectorAll('.section-btn');
@@ -19,8 +21,14 @@ function showSection(section) {
 }
 
 function submitForm(section) {
+    console.log(`Submitting form for section: ${section}`);
     const formData = {};
     const inputs = document.querySelectorAll(`#${section} .form-group[data-section="${section}"] input, #${section} .form-group[data-section="${section}"] select, #${section} .form-group[data-section="${section}"] textarea`);
+    if (inputs.length === 0) {
+        console.error(`No inputs found for section: ${section}`);
+        alert(`Error: Form inputs not found for ${section}. Please refresh.`);
+        return;
+    }
     inputs.forEach(input => {
         formData[input.id.replace(`${section}-`, '')] = input.value;
     });
@@ -38,11 +46,15 @@ function submitForm(section) {
 function exportExcel() {
     if (typeof XLSX === 'undefined') {
         console.error('SheetJS not loaded');
-        alert('Export failed: SheetJS library not loaded');
+        alert('Export failed: SheetJS library not loaded. Ensure xlsx.full.min.js is present.');
         return;
     }
     console.log('XLSX version', XLSX.version);
     const submissions = JSON.parse(localStorage.getItem('submissions') || '[]');
+    if (submissions.length === 0) {
+        alert('No data to export. Please submit a form first.');
+        return;
+    }
     const ws = XLSX.utils.json_to_sheet(submissions);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Archive');
@@ -57,16 +69,20 @@ function exportExcel() {
 }
 
 function updateArchiveTable() {
+    console.log('Updating archive table...');
     const submissions = JSON.parse(localStorage.getItem('submissions') || '[]');
     const tableBody = document.getElementById('archive-table-body');
-    if (!tableBody) return;
+    if (!tableBody) {
+        console.error('Archive table body not found');
+        return;
+    }
     tableBody.innerHTML = '';
     submissions.forEach((submission, index) => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${submission.section}</td>
             <td>${submission.timestamp}</td>
-            <td>${submission.result || submission.percentage || submission.status || submission['realised'] || submission.line || '-'}</td>
+            <td>${submission.result || submission.percentage || submission.status || submission.realised || submission.line || '-'}</td>
             <td>${submission.uap || '-'}</td>
             <td>${submission.week || '-'}</td>
             <td>${submission.date || '-'}</td>
@@ -80,6 +96,7 @@ function updateArchiveTable() {
 }
 
 function viewSubmission(index) {
+    console.log(`Viewing submission ${index}`);
     const submissions = JSON.parse(localStorage.getItem('submissions') || '[]');
     const submission = submissions[index];
     if (submission) {
@@ -88,11 +105,14 @@ function viewSubmission(index) {
         if (modal && modalDetails) {
             modalDetails.textContent = JSON.stringify(submission, null, 2);
             modal.classList.remove('hidden');
+        } else {
+            console.error('Modal or modal-details not found');
         }
     }
 }
 
 function deleteSubmission(index) {
+    console.log(`Deleting submission ${index}`);
     const submissions = JSON.parse(localStorage.getItem('submissions') || '[]');
     submissions.splice(index, 1);
     localStorage.setItem('submissions', JSON.stringify(submissions));
@@ -101,6 +121,12 @@ function deleteSubmission(index) {
 }
 
 function updateCharts() {
+    console.log('Updating charts...');
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js not loaded');
+        alert('Charts failed to load: Chart.js not available.');
+        return;
+    }
     const submissions = JSON.parse(localStorage.getItem('submissions') || '[]');
     const charts = {
         'chart-audit-5s': { section: 'audit-5s', key: 'result', type: 'bar' },
@@ -111,22 +137,33 @@ function updateCharts() {
         'chart-taux-realisation-5s': { section: 'taux-realisation-5s', key: 'realised', type: 'bar' }
     };
 
+    // Placeholder data if submissions are empty
+    const placeholderData = [
+        { section: 'audit-5s', result: 85, line: 'L77', uap: 'UAP1', date: '2025-08-05', timestamp: new Date().toISOString() },
+        { section: 'audit-gemba', result: 90, line: 'F01', uap: 'UAP2', date: '2025-08-05', timestamp: new Date().toISOString() }
+    ];
+
+    const dataToUse = submissions.length > 0 ? submissions : placeholderData;
+
     Object.keys(charts).forEach(chartId => {
         const { section, key, type } = charts[chartId];
         const canvas = document.getElementById(chartId);
-        if (!canvas) return;
+        if (!canvas) {
+            console.error(`Canvas not found: ${chartId}`);
+            return;
+        }
         const ctx = canvas.getContext('2d');
-        const data = submissions
+        const data = dataToUse
             .filter(s => s.section === section)
             .map(s => ({
-                label: s.line || s.name || s.week || s.date,
+                label: s.line || s.name || s.week || s.date || 'N/A',
                 value: parseFloat(s[key]) || 0,
                 date: s.date,
                 uap: s.uap
             }));
 
-        const labels = data.map(d => d.label || 'Unknown');
-        const values = data.map(d => d.value);
+        const labels = data.length > 0 ? data.map(d => d.label) : ['No Data'];
+        const values = data.length > 0 ? data.map(d => d.value) : [0];
         const backgroundColors = values.map(v => v >= 85 ? '#4caf50' : v >= 75 ? '#ff9800' : '#f44336');
 
         if (window[chartId]) {
@@ -155,7 +192,7 @@ function updateCharts() {
                         callbacks: {
                             label: function(context) {
                                 const index = context.dataIndex;
-                                const item = data[index];
+                                const item = data[index] || {};
                                 return [
                                     `${context.dataset.label}: ${context.raw}`,
                                     `Date: ${item.date || 'N/A'}`,
@@ -171,6 +208,7 @@ function updateCharts() {
 }
 
 function applyFilters() {
+    console.log('Applying filters...');
     const uap = document.getElementById('dashboard-filter-uap').value;
     const week = document.getElementById('filter-week').value;
     const date = document.getElementById('filter-date').value;
@@ -183,4 +221,10 @@ function applyFilters() {
     localStorage.setItem('submissions', JSON.stringify(filtered));
     updateCharts();
     updateArchiveTable();
+}
+
+function closeModal() {
+    console.log('Closing modal...');
+    const modal = document.getElementById('details-modal');
+    if (modal) modal.classList.add('hidden');
 }
