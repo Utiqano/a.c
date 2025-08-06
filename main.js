@@ -1,15 +1,17 @@
+let sectionsLoaded = 0;
+const totalSections = 8; // audit-5s, audit-gemba, emplissage-tableau, taux-absenteisme, etc.
+
 function loadFallbackXLSX() {
     console.warn('Primary SheetJS CDN failed, trying local fallback...');
     const localScript = document.createElement('script');
     localScript.src = 'xlsx.full.min.js';
     localScript.onerror = () => {
-        console.error('Local SheetJS fallback failed. Ensure xlsx.full.min.js (version 0.21.0) is in the same directory as index.html. Download it from https://unpkg.com/xlsx@0.21.0/dist/xlsx.full.min.js.');
-        alert('Failed to load SheetJS library. Please download xlsx.full.min.js (version 0.21.0) from https://unpkg.com/xlsx@0.21.0/dist/xlsx.full.min.js, place it in the same directory as index.html, check your internet connection, and disable ad-blockers.');
+        console.error('Local SheetJS fallback failed...');
+        alert('Failed to load SheetJS library...');
     };
     document.head.appendChild(localScript);
 }
 
-// Load forms and attach event listeners
 document.addEventListener('DOMContentLoaded', () => {
     const sections = [
         'audit-5s',
@@ -26,10 +28,19 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(response => response.text())
             .then(html => {
                 const sectionHtml = html.replace(/id="([^"]+)"/g, (match, id) => `id="${section}-${id}"`);
-                document.getElementById(section).innerHTML = sectionHtml.replace(/{{section}}/g, section);
-                const submitButton = document.querySelector(`#${section} .submit-btn[data-section="${section}"]`);
-                if (submitButton) {
-                    submitButton.addEventListener('click', () => submitForm(section));
+                const sectionElement = document.getElementById(section);
+                if (sectionElement) {
+                    sectionElement.innerHTML = sectionHtml.replace(/{{section}}/g, section);
+                    const submitButton = document.querySelector(`#${section} .submit-btn[data-section="${section}"]`);
+                    if (submitButton) {
+                        submitButton.addEventListener('click', () => submitForm(section));
+                    }
+                    sectionsLoaded++;
+                    if (sectionsLoaded === totalSections && window.pendingLogin) {
+                        showSection('dashboard-section');
+                    }
+                } else {
+                    console.error(`Section container not found: ${section}`);
                 }
             })
             .catch(err => console.error(`Failed to load form.html for ${section}:`, err));
@@ -38,7 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Login button
     const loginButton = document.getElementById('login-button');
     if (loginButton) {
-        loginButton.addEventListener('click', handleLogin);
+        loginButton.addEventListener('click', () => {
+            handleLogin();
+        });
     }
 
     // Sidebar navigation
@@ -65,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeModalButton.addEventListener('click', closeModal);
     }
 
-    // Archive table buttons (view/delete)
+    // Archive table buttons
     const archiveTableBody = document.getElementById('archive-table-body');
     if (archiveTableBody) {
         archiveTableBody.addEventListener('click', (event) => {
@@ -81,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Attach fallback for SheetJS (loaded dynamically if CDN fails)
+// Attach fallback for SheetJS
 const sheetJSScript = document.querySelector('script[src*="xlsx.full.min.js"]');
 if (sheetJSScript) {
     sheetJSScript.addEventListener('error', loadFallbackXLSX);
