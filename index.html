@@ -430,7 +430,7 @@
                 <li><button onclick="showSection('audit-gemba')">Audit Gemba</button></li>
                 <li><button onclick="showSection('emplissage-tableau')">TAU Emplissage Tableau de Bord</button></li>
                 <li><button onclick="showSection('taux-absenteisme')">Taux Absenteisme</button></li>
-                <li><button onclick="showSection('taux-realisation-gemba')">Taux Realisation Audit Gemba</button></li>
+                <li><button onclick="showSection('taux-realisation-gemba')">Taux Realisation Gemba</button></li>
                 <li><button onclick="showSection('taux-realisation-5s')">Taux Realisation 5S</button></li>
                 <li><button onclick="showSection('top-action-gemba')">Top Action Gemba</button></li>
                 <li><button onclick="showSection('top-action-5s')">Top Action 5S</button></li>
@@ -663,6 +663,14 @@
                 <h2>TAU Emplissage Tableau de Bord</h2>
                 <div>
                     <div class="form-group">
+                        <label for="emplissage-date">Date</label>
+                        <input type="date" id="emplissage-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emplissage-week">Week</label>
+                        <input type="number" id="emplissage-week" required min="1">
+                    </div>
+                    <div class="form-group">
                         <label for="emplissage-uap">UAP</label>
                         <select id="emplissage-uap" required>
                             <option value="" disabled selected>Select UAP</option>
@@ -678,7 +686,7 @@
                         <label for="emplissage-commentaire">Commentaire (Optional)</label>
                         <textarea id="emplissage-commentaire"></textarea>
                     </div>
-                    <button onclick="submitForm('Emplissage Tableau de Bord', ['emplissage-uap', 'emplissage-percentage', 'emplissage-commentaire'])">Submit</button>
+                    <button onclick="submitForm('Emplissage Tableau de Bord', ['emplissage-date', 'emplissage-week', 'emplissage-uap', 'emplissage-percentage', 'emplissage-commentaire'])">Submit</button>
                 </div>
             </div>
             <div id="taux-absenteisme" class="section hidden">
@@ -829,7 +837,7 @@
         // Import Firebase SDK
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, deleteDoc, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
         // Firebase configuration
         const firebaseConfig = {
@@ -851,6 +859,7 @@
 
         // Handle authentication state
         onAuthStateChanged(auth, user => {
+            console.log('Auth state:', user ? `User ${user.uid} (${user.email})` : 'No user');
             if (user) {
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('dashboard').classList.remove('hidden');
@@ -904,7 +913,12 @@
         window.submitForm = async function(sectionName, inputIds) {
             try {
                 const user = auth.currentUser;
-                if (!user) throw new Error('User not authenticated');
+                if (!user) {
+                    alert('Please log in to submit data.');
+                    document.getElementById('login-container').classList.remove('hidden');
+                    document.getElementById('dashboard').classList.add('hidden');
+                    return;
+                }
                 const formData = { 
                     section: sectionName, 
                     timestamp: new Date().toISOString(),
@@ -915,6 +929,7 @@
                     formData[id] = value === null || value === undefined ? '' : String(value).replace(/[^\x20-\x7E]/g, '');
                 });
 
+                console.log('Submitting formData:', formData);
                 await addDoc(collection(db, 'submissions'), formData);
                 alert(`${sectionName} submitted successfully`);
 
@@ -927,6 +942,7 @@
                     updateArchiveTable();
                 }
             } catch (err) {
+                console.error('Submit error:', err);
                 alert('Error submitting form: ' + err.message);
             }
         };
@@ -942,11 +958,18 @@
             const filterWeek = document.getElementById('filter-week').value;
             const filterDate = document.getElementById('filter-date').value;
 
-            let query = collection(db, 'submissions');
-            const submissions = [];
-
             try {
-                const snapshot = await getDocs(query);
+                const user = auth.currentUser;
+                if (!user) {
+                    alert('Please log in to view data.');
+                    return;
+                }
+                const q = query(collection(db, 'submissions'), where('userId', '==', user.uid));
+                const submissions = [];
+
+                console.log('Applying filters:', { filterUAP, filterWeek, filterDate });
+
+                const snapshot = await getDocs(q);
                 snapshot.forEach(doc => {
                     const data = { id: doc.id, ...doc.data() };
                     let matchesUAP = true;
@@ -962,14 +985,16 @@
                             data['audit-gemba-week'] === filterWeek ||
                             data['absenteisme-week'] === filterWeek ||
                             data['realisation-gemba-week'] === filterWeek ||
-                            data['realisation-5s-week'] === filterWeek
+                            data['realisation-5s-week'] === filterWeek ||
+                            data['emplissage-week'] === filterWeek
                         );
                     }
                     if (filterDate) {
                         matchesDate = (
                             data['audit-5s-date'] === filterDate ||
                             data['audit-gemba-date'] === filterDate ||
-                            data['absenteisme-date'] === filterDate
+                            data['absenteisme-date'] === filterDate ||
+                            data['emplissage-date'] === filterDate
                         );
                     }
 
@@ -978,9 +1003,15 @@
                     }
                 });
 
+                console.log('Filtered submissions:', submissions);
+                if (submissions.length === 0) {
+                    alert('No data matches the selected filters.');
+                }
+
                 updateCharts(submissions);
                 updateActionTables(submissions);
             } catch (err) {
+                console.error('Filter error:', err);
                 alert('Error fetching submissions: ' + err.message);
             }
         };
@@ -1021,8 +1052,10 @@
                     data: submissions
                         .filter(s => s.section === 'Emplissage Tableau de Bord')
                         .map(s => ({
-                            x: s.timestamp,
-                            y: parseFloat(s['emplissage-percentage']) || 0
+                            x: s['emplissage-week'] || s.timestamp,
+                            y: parseFloat(s['emplissage-percentage']) || 0,
+                            date: s['emplissage-date'] || '-',
+                            uap: s['emplissage-uap'] || '-'
                         })),
                     key: 'emplissage-percentage'
                 },
@@ -1099,13 +1132,13 @@
                                 callbacks: {
                                     label: function(context) {
                                         const data = context.dataset.customData[context.dataIndex];
-                                        if (context.dataset.label.includes('Audit 5S') || context.dataset.label.includes('Audit Gemba')) {
+                                        if (context.dataset.label.includes('Audit 5S') || context.dataset.label.includes('Audit Gemba') || context.dataset.label.includes('Emplissage')) {
                                             return [
                                                 `${context.dataset.label}: ${context.raw.toFixed(2)}%`,
-                                                `Line: ${data.line}`,
+                                                `Line: ${data.line || '-'}`,
                                                 `Date: ${data.date}`,
                                                 `Week: ${data.x}`,
-                                                `UAP: ${data.uap}`
+                                                `UAP: ${data.uap || '-'}`
                                             ];
                                         }
                                         return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
@@ -1118,7 +1151,7 @@
             });
         }
 
-        async function updateActionTables(submissions) {
+        function updateActionTables(submissions) {
             const gembaTbody = document.getElementById('top-action-gemba-table');
             const fiveSTbody = document.getElementById('top-action-5s-table');
             gembaTbody.innerHTML = '';
@@ -1160,7 +1193,13 @@
             const tbody = document.getElementById('archive-table-body');
             tbody.innerHTML = '';
             try {
-                const snapshot = await getDocs(collection(db, 'submissions'));
+                const user = auth.currentUser;
+                if (!user) {
+                    alert('Please log in to view archive.');
+                    return;
+                }
+                const q = query(collection(db, 'submissions'), where('userId', '==', user.uid));
+                const snapshot = await getDocs(q);
                 snapshot.forEach(doc => {
                     const submission = { id: doc.id, ...doc.data() };
                     const row = document.createElement('tr');
@@ -1170,8 +1209,8 @@
                         <td>${new Date(submission.timestamp).toLocaleString()}</td>
                         <td>${keyData}</td>
                         <td>${submission['audit-5s-uap'] || submission['audit-gemba-uap'] || submission['emplissage-uap'] || '-'}</td>
-                        <td>${submission['audit-5s-week'] || submission['audit-gemba-week'] || submission['absenteisme-week'] || submission['realisation-gemba-week'] || submission['realisation-5s-week'] || '-'}</td>
-                        <td>${submission['audit-5s-date'] || submission['audit-gemba-date'] || submission['absenteisme-date'] || '-'}</td>
+                        <td>${submission['audit-5s-week'] || submission['audit-gemba-week'] || submission['absenteisme-week'] || submission['realisation-gemba-week'] || submission['realisation-5s-week'] || submission['emplissage-week'] || '-'}</td>
+                        <td>${submission['audit-5s-date'] || submission['audit-gemba-date'] || submission['absenteisme-date'] || submission['emplissage-date'] || '-'}</td>
                         <td>
                             <button class="view-btn" onclick="viewSubmission('${submission.id}')">View</button>
                             <button class="delete-btn" onclick="deleteSubmission('${submission.id}')">Delete</button>
@@ -1180,6 +1219,7 @@
                     tbody.appendChild(row);
                 });
             } catch (err) {
+                console.error('Archive error:', err);
                 alert('Error fetching archive: ' + err.message);
             }
         };
@@ -1218,6 +1258,7 @@
                     alert('Submission not found');
                 }
             } catch (err) {
+                console.error('View error:', err);
                 alert('Error viewing submission: ' + err.message);
             }
         };
@@ -1229,6 +1270,7 @@
                     updateArchiveTable();
                     applyFilters();
                 } catch (err) {
+                    console.error('Delete error:', err);
                     alert('Error deleting submission: ' + err.message);
                 }
             }
