@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KPI Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
@@ -15,25 +15,29 @@
     <div id="login-container" class="min-h-screen">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md mx-auto mt-8 transform transition-all">
             <div class="text-center mb-6">
-                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23dc2626'%3E%3Cpath d='M20 70h60v10H20zM20 50h40v10H20zM20 30h20v10H20zM70 30h10v50H70z'/%3E%3Ccircle cx='50' cy='20' r='10'/%3E%3C/svg%3E" alt="KPI Logo" class="mx-auto w-16 h-16">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23dc2626'%3E%3Cpath d='M20 70h60v10H20zM20 50h40v10H20zM20 30h20v10H20zM70 30h10v50H70z'/%3E%3Ccircle cx='50' cy='20' r='10'/%3E%3C/svg%3E" alt="KPI Dashboard Logo" class="mx-auto w-16 h-16">
                 <h1 class="text-3xl font-extrabold text-gray-800 mt-4">KPI Dashboard</h1>
             </div>
-            <div class="mb-6 relative">
-                <input type="email" id="email" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer" placeholder=" ">
-                <label for="email" class="absolute left-3 -top-2 text-sm font-semibold text-gray-700 bg-white px-1 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2 peer-focus:text-sm peer-focus:text-gray-700">Email</label>
-            </div>
-            <div class="mb-6 relative">
-                <input type="password" id="password" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer" placeholder=" ">
-                <label for="password" class="absolute left-3 -top-2 text-sm font-semibold text-gray-700 bg-white px-1 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2 peer-focus:text-sm peer-focus:text-gray-700">Password</label>
-            </div>
-            <button id="login-btn" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Login</button>
-            <p id="error-message" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
+            <form id="login-form">
+                <div class="mb-6 relative">
+                    <input type="email" id="email" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer" placeholder=" " aria-describedby="error-message">
+                    <label for="email" class="absolute left-3 -top-2 text-sm font-semibold text-gray-700 bg-white px-1 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2 peer-focus:text-sm peer-focus:text-gray-700">Email</label>
+                </div>
+                <div class="mb-6 relative">
+                    <input type="password" id="password" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer" placeholder=" " aria-describedby="error-message">
+                    <label for="password" class="absolute left-3 -top-2 text-sm font-semibold text-gray-700 bg-white px-1 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2 peer-focus:text-sm peer-focus:text-gray-700">Password</label>
+                </div>
+                <button type="submit" id="login-btn" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Login</button>
+                <p id="error-message" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
+            </form>
         </div>
     </div>
 
     <!-- Dashboard Container -->
     <div id="dashboard-container" class="hidden min-h-screen">
-        <button class="hamburger hidden fixed top-4 left-4 z-50 bg-red-600 text-white p-3 rounded-lg">☰</button>
+        <button class="hamburger hidden fixed top-4 left-4 z-50 bg-red-600 text-white p-3 rounded-lg" aria-label="Toggle navigation menu" aria-expanded="false">
+            <span></span><span></span><span></span>
+        </button>
         <div class="flex h-full">
             <!-- Sidebar -->
             <div class="w-72 bg-gray-900 text-white p-6 shadow-lg">
@@ -42,7 +46,7 @@
                     <span id="user-email" class="text-sm font-semibold truncate"></span>
                 </div>
                 <h2 class="text-2xl font-bold mb-6 text-red-500">KPI Dashboard</h2>
-                <ul>
+                <ul role="navigation">
                     <li><a href="#" data-section="Dashboard" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a></li>
                     <li><a href="#" data-section="Audit 5S" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-check-circle mr-2"></i> Audit 5S</a></li>
                     <li><a href="#" data-section="Audit Gemba" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-walking mr-2"></i> Audit Gemba</a></li>
@@ -57,7 +61,7 @@
                 </ul>
             </div>
             <!-- Main Content -->
-            <div class="flex-1 p-10 bg-gray-100">
+            <div class="flex-1 p-10 bg-gray-100 main-content">
                 <header class="mb-6">
                     <h1 id="section-title" class="text-3xl font-extrabold text-gray-800">Dashboard</h1>
                     <nav class="text-sm text-gray-600">KPI Dashboard > <span id="breadcrumb-section">Dashboard</span></nav>
@@ -67,6 +71,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
