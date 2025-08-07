@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-// Firebase configuration
+// Firebase configuration (RECOMMENDED: Move to backend or environment variables for security)
 const firebaseConfig = {
   apiKey: "AIzaSyARc68C9RvqPHedrAtxJcZCUeZIEfn1XnA",
   authDomain: "dashbord-10e83.firebaseapp.com",
@@ -19,9 +19,15 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const database = getDatabase(app);
 
+// Set session persistence to LOCAL
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.error("Error setting session persistence:", error);
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   const loginContainer = document.getElementById("login-container");
   const dashboardContainer = document.getElementById("dashboard-container");
+  const loginForm = document.getElementById("login-form");
   const errorMessage = document.getElementById("error-message");
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
@@ -105,47 +111,105 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Login functionality with Firebase Auth
-  loginBtn.addEventListener("click", () => {
+  // Real-time email validation
+  emailInput.addEventListener("input", () => {
+    const email = emailInput.value.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showError(errorMessage, "Please enter a valid email address");
+    } else {
+      errorMessage.classList.add("hidden");
+    }
+  });
+
+  // Real-time password validation
+  passwordInput.addEventListener("input", () => {
+    const password = passwordInput.value.trim();
+    if (password.length < 6) {
+      showError(errorMessage, "Password must be at least 6 characters");
+    } else {
+      errorMessage.classList.add("hidden");
+    }
+  });
+
+  // Login functionality
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
     const email = emailInput.value.trim();
     const password = passwordInput.value.trim();
 
     if (!email || !password) {
-      errorMessage.textContent = "Please enter both email and password";
-      errorMessage.classList.remove("hidden");
+      showError(errorMessage, "Please enter both email and password");
       return;
     }
 
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        currentUser = userCredential.user;
-        userEmail.textContent = currentUser.email;
-        loginContainer.classList.add("hidden");
-        loginContainer.style.display = "none";
-        dashboardContainer.classList.remove("hidden");
-        dashboardContainer.style.display = "block";
-        dashboardContainer.style.opacity = "0";
-        setTimeout(() => {
-          dashboardContainer.style.opacity = "1";
-          dashboardContainer.style.transition = "opacity 0.5s ease";
-        }, 10);
-        errorMessage.classList.add("hidden");
-        if (hamburger) hamburger.classList.remove("hidden");
-        loadFirebaseData(() => {
-          console.log("Rendering Dashboard after login");
-          renderSection("Dashboard");
-        });
-        const dashboardLink = document.querySelector('a[data-section="Dashboard"]');
-        if (dashboardLink) {
-          sidebarLinks.forEach((link) => link.classList.remove("active"));
-          dashboardLink.classList.add("active");
-        }
-      })
-      .catch((error) => {
-        console.error("Login error:", error);
-        errorMessage.textContent = "Invalid email or password";
-        errorMessage.classList.remove("hidden");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showError(errorMessage, "Please enter a valid email address");
+      return;
+    }
+
+    if (password.length < 6) {
+      showError(errorMessage, "Password must be at least 6 characters");
+      return;
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Logging in...';
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      currentUser = userCredential.user;
+      userEmail.textContent = currentUser.email;
+      loginContainer.classList.add("hidden");
+      loginContainer.style.display = "none";
+      dashboardContainer.classList.remove("hidden");
+      dashboardContainer.style.display = "block";
+      dashboardContainer.style.opacity = "0";
+      setTimeout(() => {
+        dashboardContainer.style.opacity = "1";
+        dashboardContainer.style.transition = "opacity 0.5s ease";
+      }, 10);
+      errorMessage.classList.add("hidden");
+      if (hamburger) hamburger.classList.remove("hidden");
+      emailInput.value = "";
+      passwordInput.value = "";
+      loadFirebaseData(() => {
+        console.log("Rendering Dashboard after login");
+        renderSection("Dashboard");
       });
+      const dashboardLink = document.querySelector('a[data-section="Dashboard"]');
+      if (dashboardLink) {
+        sidebarLinks.forEach((link) => link.classList.remove("active"));
+        dashboardLink.classList.add("active");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      let errorMsg = "An error occurred. Please try again.";
+      switch (error.code) {
+        case "auth/user-not-found":
+          errorMsg = "No user found with this email.";
+          break;
+        case "auth/wrong-password":
+          errorMsg = "Incorrect password.";
+          break;
+        case "auth/too-many-requests":
+          errorMsg = "Too many attempts. Please try again later.";
+          break;
+        case "auth/invalid-email":
+          errorMsg = "Invalid email format.";
+          break;
+        case "auth/network-request-failed":
+          errorMsg = "Network error. Please check your connection.";
+          break;
+        default:
+          errorMsg = `Error: ${error.message}`;
+      }
+      showError(errorMessage, errorMsg);
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.innerHTML = "Login";
+    }
   });
 
   // Logout functionality
@@ -160,10 +224,14 @@ document.addEventListener("DOMContentLoaded", () => {
       passwordInput.value = "";
       errorMessage.classList.add("hidden");
       if (sidebar) sidebar.classList.remove("active");
-      if (hamburger) hamburger.classList.add("hidden");
+      if (hamburger) {
+        hamburger.classList.add("hidden");
+        hamburger.setAttribute("aria-expanded", "false");
+      }
       sidebarLinks.forEach((link) => link.classList.remove("active"));
     }).catch((error) => {
       console.error("Logout error:", error);
+      showError(errorMessage, "Failed to log out. Please try again.");
     });
   });
 
@@ -172,6 +240,9 @@ document.addEventListener("DOMContentLoaded", () => {
     hamburger.addEventListener("click", () => {
       console.log("Hamburger clicked, toggling sidebar");
       sidebar.classList.toggle("active");
+      mainContent.classList.toggle("sidebar-active");
+      const isExpanded = sidebar.classList.contains("active");
+      hamburger.setAttribute("aria-expanded", isExpanded.toString());
     });
   }
 
@@ -187,6 +258,8 @@ document.addEventListener("DOMContentLoaded", () => {
         renderSection(section);
       });
       if (sidebar) sidebar.classList.remove("active");
+      if (hamburger) hamburger.setAttribute("aria-expanded", "false");
+      mainContent.classList.remove("sidebar-active");
       sidebarLinks.forEach((l) => l.classList.remove("active"));
       link.classList.add("active");
     });
@@ -198,6 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
     element.classList.remove("text-red-600");
     element.classList.add("text-green-600");
     element.classList.remove("hidden");
+    element.setAttribute("role", "alert");
     setTimeout(() => {
       element.classList.add("hidden");
     }, 3000);
@@ -208,6 +282,20 @@ document.addEventListener("DOMContentLoaded", () => {
     element.classList.remove("text-green-600");
     element.classList.add("text-red-600");
     element.classList.remove("hidden");
+    element.setAttribute("role", "alert");
+  }
+
+  // Debounce utility for filter buttons
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
   }
 
   // Render content based on sidebar selection
@@ -224,40 +312,41 @@ document.addEventListener("DOMContentLoaded", () => {
           mainContent.innerHTML = `
             <h1 class="text-4xl font-extrabold text-gray-800">${section}</h1>
             <p class="mt-6 text-lg text-gray-600">Enter audit data below.</p>
-            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+            <form id="${section.toLowerCase().replace(" ", "-")}-form" class="mt-6 bg-white p-6 rounded-lg shadow-lg">
               <div class="mb-4">
                 <label for="date" class="block text-sm font-semibold text-gray-700">Date</label>
-                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="week" class="block text-sm font-semibold text-gray-700">Week</label>
-                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)">
+                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="uap" class="block text-sm font-semibold text-gray-700">UAP</label>
-                <select id="uap" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <select id="uap" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="form-error">
                   <option value="">Select a UAP</option>
                   ${uaps.map((uap) => `<option value="${uap}">${uap}</option>`).join("")}
                 </select>
               </div>
               <div class="mb-4">
                 <label for="ligne" class="block text-sm font-semibold text-gray-700">Ligne</label>
-                <select id="ligne" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <select id="ligne" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="form-error">
                   <option value="">Select a ligne</option>
                   ${lignes.map((ligne) => `<option value="${ligne}">${ligne}</option>`).join("")}
                 </select>
               </div>
               <div class="mb-4">
                 <label for="score" class="block text-sm font-semibold text-gray-700">Score (%)</label>
-                <input type="number" id="score" min="0" max="100" step="0.1" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter score (0-100)">
+                <input type="number" id="score" min="0" max="100" step="0.1" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter score (0-100)" aria-describedby="form-error">
               </div>
-              <button id="submit-audit" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
+              <button type="submit" id="submit-audit" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
               <p id="form-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
-            </div>
+            </form>
           `;
 
+          const form = document.getElementById(`${section.toLowerCase().replace(" ", "-")}-form`);
           const submitBtn = document.getElementById("submit-audit");
-          submitBtn.addEventListener("click", () => {
+          submitBtn.addEventListener("click", async () => {
             const date = document.getElementById("date").value;
             const week = document.getElementById("week").value;
             const uap = document.getElementById("uap").value;
@@ -286,56 +375,65 @@ document.addEventListener("DOMContentLoaded", () => {
               return;
             }
 
-            const dataRef = ref(database, `auditData/${section}`);
-            push(dataRef, {
-              date,
-              week: parseInt(week),
-              uap,
-              ligne,
-              score: parseFloat(score)
-            }).then(() => {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Submitting...';
+
+            try {
+              const dataRef = ref(database, `auditData/${section}`);
+              await push(dataRef, {
+                date,
+                week: parseInt(week),
+                uap,
+                ligne,
+                score: parseFloat(score)
+              });
               showSuccess(formError, "Data submitted successfully!");
+              form.reset();
               loadFirebaseData(() => renderSection(section));
-            }).catch((error) => {
+            } catch (error) {
               console.error(`Error submitting ${section} data:`, error);
               showError(formError, "Failed to submit data");
-            });
+            } finally {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = "Submit";
+            }
           });
         } else if (section === "TAU Emplissage") {
           mainContent.innerHTML = `
             <h1 class="text-4xl font-extrabold text-gray-800">${section}</h1>
             <p class="mt-6 text-lg text-gray-600">Enter TAU Emplissage data below.</p>
-            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+            <form id="tau-emplissage-form" class="mt-6 bg-white p-6 rounded-lg shadow-lg">
               <div class="mb-4">
                 <label for="date" class="block text-sm font-semibold text-gray-700">Date</label>
-                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="week" class="block text-sm font-semibold text-gray-700">Week</label>
-                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)">
+                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="uap" class="block text-sm font-semibold text-gray-700">UAP</label>
-                <select id="uap" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <select id="uap" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="form-error">
                   <option value="">Select a UAP</option>
                   ${uaps.map((uap) => `<option value="${uap}">${uap}</option>`).join("")}
                 </select>
               </div>
               <div class="mb-4">
                 <label for="resultat" class="block text-sm font-semibold text-gray-700">Resultat (%)</label>
-                <input type="number" id="resultat" min="0" max="100" step="0.1" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter resultat (0-100)">
+                <input type="number" id="resultat" min="0" max="100" step="0.1" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter resultat (0-100)" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="commentaire" class="block text-sm font-semibold text-gray-700">Commentaire</label>
-                <input type="text" id="commentaire" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter comment (optional)">
+                <input type="text" id="commentaire" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter comment (optional)" aria-describedby="form-error">
               </div>
-              <button id="submit-tau" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
+              <button type="submit" id="submit-tau" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
               <p id="form-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
-            </div>
+            </form>
           `;
 
+          const form = document.getElementById("tau-emplissage-form");
           const submitBtn = document.getElementById("submit-tau");
-          submitBtn.addEventListener("click", () => {
+          submitBtn.addEventListener("click", async () => {
             const date = document.getElementById("date").value;
             const week = document.getElementById("week").value;
             const uap = document.getElementById("uap").value;
@@ -363,44 +461,52 @@ document.addEventListener("DOMContentLoaded", () => {
               return;
             }
 
-            const dataRef = ref(database, `auditData/${section}`);
-            push(dataRef, {
-              date,
-              week: parseInt(week),
-              uap,
-              resultat: parseFloat(resultat),
-              commentaire
-            }).then(() => {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Submitting...';
+
+            try {
+              const dataRef = ref(database, `auditData/${section}`);
+              await push(dataRef, {
+                date,
+                week: parseInt(week),
+                uap,
+                resultat: parseFloat(resultat),
+                commentaire
+              });
               showSuccess(formError, "Data submitted successfully!");
+              form.reset();
               loadFirebaseData(() => renderSection(section));
-            }).catch((error) => {
+            } catch (error) {
               console.error(`Error submitting ${section} data:`, error);
               showError(formError, "Failed to submit data");
-            });
+            } finally {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = "Submit";
+            }
           });
         } else if (section === "Taux Absenteisme") {
           mainContent.innerHTML = `
             <h1 class="text-4xl font-extrabold text-gray-800">${section}</h1>
             <p class="mt-6 text-lg text-gray-600">Enter attendance data below.</p>
-            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+            <form id="taux-absenteisme-form" class="mt-6 bg-white p-6 rounded-lg shadow-lg">
               <div class="mb-4">
                 <label for="date" class="block text-sm font-semibold text-gray-700">Date</label>
-                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="week" class="block text-sm font-semibold text-gray-700">Week</label>
-                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)">
+                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="nom" class="block text-sm font-semibold text-gray-700">Nom</label>
-                <select id="nom" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <select id="nom" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="form-error">
                   <option value="">Select an employee</option>
                   ${employees.map((nom) => `<option value="${nom}">${nom}</option>`).join("")}
                 </select>
               </div>
               <div class="mb-4">
                 <label for="statut" class="block text-sm font-semibold text-gray-700">Statut</label>
-                <select id="statut" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <select id="statut" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="form-error">
                   <option value="">Select status</option>
                   <option value="Présent">Présent</option>
                   <option value="Absent">Absent</option>
@@ -408,15 +514,16 @@ document.addEventListener("DOMContentLoaded", () => {
               </div>
               <div class="mb-4">
                 <label for="commentaire" class="block text-sm font-semibold text-gray-700">Commentaire (Optional)</label>
-                <input type="text" id="commentaire" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter comment (optional)">
+                <input type="text" id="commentaire" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter comment (optional)" aria-describedby="form-error">
               </div>
-              <button id="submit-absenteisme" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
+              <button type="submit" id="submit-absenteisme" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
               <p id="form-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
-            </div>
+            </form>
           `;
 
+          const form = document.getElementById("taux-absenteisme-form");
           const submitBtn = document.getElementById("submit-absenteisme");
-          submitBtn.addEventListener("click", () => {
+          submitBtn.addEventListener("click", async () => {
             const date = document.getElementById("date").value;
             const week = document.getElementById("week").value;
             const nom = document.getElementById("nom").value;
@@ -440,51 +547,60 @@ document.addEventListener("DOMContentLoaded", () => {
               return;
             }
 
-            const percentage = statut === "Présent" ? 100 : 0;
-            const dataRef = ref(database, `auditData/${section}`);
-            push(dataRef, {
-              date,
-              week: parseInt(week),
-              nom,
-              statut,
-              percentage,
-              commentaire
-            }).then(() => {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Submitting...';
+
+            try {
+              const percentage = statut === "Présent" ? 100 : 0;
+              const dataRef = ref(database, `auditData/${section}`);
+              await push(dataRef, {
+                date,
+                week: parseInt(week),
+                nom,
+                statut,
+                percentage,
+                commentaire
+              });
               showSuccess(formError, "Data submitted successfully!");
+              form.reset();
               loadFirebaseData(() => renderSection(section));
-            }).catch((error) => {
+            } catch (error) {
               console.error(`Error submitting ${section} data:`, error);
               showError(formError, "Failed to submit data");
-            });
+            } finally {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = "Submit";
+            }
           });
         } else if (section === "Taux Realisation 5S" || section === "Taux Realisation Gemba") {
           mainContent.innerHTML = `
             <h1 class="text-4xl font-extrabold text-gray-800">${section}</h1>
             <p class="mt-6 text-lg text-gray-600">Enter audit realisation data below.</p>
-            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+            <form id="${section.toLowerCase().replace(" ", "-")}-form" class="mt-6 bg-white p-6 rounded-lg shadow-lg">
               <div class="mb-4">
                 <label for="date" class="block text-sm font-semibold text-gray-700">Date</label>
-                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="week" class="block text-sm font-semibold text-gray-700">Week</label>
-                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)">
+                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="audits-realises" class="block text-sm font-semibold text-gray-700">Nombre Audit Réalisé</label>
-                <input type="number" id="audits-realises" min="0" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter number of audits realised">
+                <input type="number" id="audits-realises" min="0" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter number of audits realised" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="audits-planifies" class="block text-sm font-semibold text-gray-700">Nombre Audit Planifié</label>
-                <input type="number" id="audits-planifies" min="0" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter number of audits planned">
+                <input type="number" id="audits-planifies" min="0" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter number of audits planned" aria-describedby="form-error">
               </div>
-              <button id="submit-realisation" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
+              <button type="submit" id="submit-realisation" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
               <p id="form-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
-            </div>
+            </form>
           `;
 
+          const form = document.getElementById(`${section.toLowerCase().replace(" ", "-")}-form`);
           const submitBtn = document.getElementById("submit-realisation");
-          submitBtn.addEventListener("click", () => {
+          submitBtn.addEventListener("click", async () => {
             const date = document.getElementById("date").value;
             const week = document.getElementById("week").value;
             const auditsRealises = document.getElementById("audits-realises").value;
@@ -511,51 +627,60 @@ document.addEventListener("DOMContentLoaded", () => {
               return;
             }
 
-            const dataRef = ref(database, `auditData/${section}`);
-            push(dataRef, {
-              date,
-              week: parseInt(week),
-              auditsRealises: parseInt(auditsRealises),
-              auditsPlanifies: parseInt(auditsPlanifies)
-            }).then(() => {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Submitting...';
+
+            try {
+              const dataRef = ref(database, `auditData/${section}`);
+              await push(dataRef, {
+                date,
+                week: parseInt(week),
+                auditsRealises: parseInt(auditsRealises),
+                auditsPlanifies: parseInt(auditsPlanifies)
+              });
               showSuccess(formError, "Data submitted successfully!");
+              form.reset();
               loadFirebaseData(() => renderSection(section));
-            }).catch((error) => {
+            } catch (error) {
               console.error(`Error submitting ${section} data:`, error);
               showError(formError, "Failed to submit data");
-            });
+            } finally {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = "Submit";
+            }
           });
         } else if (section === "Top Action 5S" || section === "Top Action Gemba") {
           mainContent.innerHTML = `
             <h1 class="text-4xl font-extrabold text-gray-800">${section}</h1>
             <p class="mt-6 text-lg text-gray-600">Enter action data below (up to 5 actions).</p>
-            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+            <form id="${section.toLowerCase().replace(" ", "-")}-form" class="mt-6 bg-white p-6 rounded-lg shadow-lg">
               <div class="mb-4">
                 <label for="date" class="block text-sm font-semibold text-gray-700">Date</label>
-                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="week" class="block text-sm font-semibold text-gray-700">Week</label>
-                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)">
+                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)" aria-describedby="form-error">
               </div>
               <div class="mb-4">
                 <label for="ligne" class="block text-sm font-semibold text-gray-700">Ligne</label>
-                <select id="ligne" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                <select id="ligne" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="form-error">
                   <option value="">Select a ligne</option>
                   ${lignes.map((ligne) => `<option value="${ligne}">${ligne}</option>`).join("")}
                 </select>
               </div>
               <div class="mb-4">
                 <label for="action" class="block text-sm font-semibold text-gray-700">Action (Optional)</label>
-                <input type="text" id="action" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter action (optional)">
+                <input type="text" id="action" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter action (optional)" aria-describedby="form-error">
               </div>
-              <button id="submit-action" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
+              <button type="submit" id="submit-action" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
               <p id="form-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
-            </div>
+            </form>
           `;
 
+          const form = document.getElementById(`${section.toLowerCase().replace(" ", "-")}-form`);
           const submitBtn = document.getElementById("submit-action");
-          submitBtn.addEventListener("click", () => {
+          submitBtn.addEventListener("click", async () => {
             const date = document.getElementById("date").value;
             const week = document.getElementById("week").value;
             const ligne = document.getElementById("ligne").value;
@@ -585,40 +710,48 @@ document.addEventListener("DOMContentLoaded", () => {
               return;
             }
 
-            const dataRef = ref(database, `auditData/${section}`);
-            push(dataRef, {
-              date,
-              week: parseInt(week),
-              ligne,
-              action: action || ""
-            }).then(() => {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Submitting...';
+
+            try {
+              const dataRef = ref(database, `auditData/${section}`);
+              await push(dataRef, {
+                date,
+                week: parseInt(week),
+                ligne,
+                action: action || ""
+              });
               showSuccess(formError, "Data submitted successfully!");
+              form.reset();
               loadFirebaseData(() => renderSection(section));
-            }).catch((error) => {
+            } catch (error) {
               console.error(`Error submitting ${section} data:`, error);
               showError(formError, "Failed to submit data");
-            });
+            } finally {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = "Submit";
+            }
           });
         } else if (section === "Dashboard") {
           mainContent.innerHTML = `
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Filter Data</h2>
-            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+            <form id="dashboard-filter-form" class="mt-6 bg-white p-6 rounded-lg shadow-lg">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
                 <div>
                   <label for="filter-start-date" class="block text-sm font-semibold text-gray-700">Start Date</label>
-                  <input type="date" id="filter-start-date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                  <input type="date" id="filter-start-date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="filter-error">
                 </div>
                 <div>
                   <label for="filter-end-date" class="block text-sm font-semibold text-gray-700">End Date</label>
-                  <input type="date" id="filter-end-date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                  <input type="date" id="filter-end-date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="filter-error">
                 </div>
                 <div>
                   <label for="filter-week" class="block text-sm font-semibold text-gray-700">Week</label>
-                  <input type="number" id="filter-week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week (1-52)">
+                  <input type="number" id="filter-week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week (1-52)" aria-describedby="filter-error">
                 </div>
                 <div>
                   <label for="filter-uap" class="block text-sm font-semibold text-gray-700">UAP/Nom</label>
-                  <select id="filter-uap" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                  <select id="filter-uap" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="filter-error">
                     <option value="">All UAPs/Employees</option>
                     ${uaps.map((uap) => `<option value="${uap}">${uap}</option>`).join("")}
                     ${employees.map((nom) => `<option value="${nom}">${nom}</option>`).join("")}
@@ -626,15 +759,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div>
                   <label for="filter-ligne" class="block text-sm font-semibold text-gray-700">Ligne</label>
-                  <select id="filter-ligne" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                  <select id="filter-ligne" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" aria-describedby="filter-error">
                     <option value="">All Lignes</option>
                     ${lignes.map((ligne) => `<option value="${ligne}">${ligne}</option>`).join("")}
                   </select>
                 </div>
               </div>
-              <button id="apply-filter" class="w-full md:w-auto bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Apply Filter</button>
+              <button type="submit" id="apply-filter" class="w-full md:w-auto bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Apply Filter</button>
               <p id="filter-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
-            </div>
+            </form>
             <div class="mt-8">
               <h2 class="text-2xl font-bold text-gray-800 mb-4">Audit 5S</h2>
               <canvas id="audit-5s-chart" class="mt-4"></canvas>
