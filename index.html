@@ -3,528 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="mobile-web-app-capable" content="yes">
-    <title>CRRE Audit Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <title>KPI Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-gray-50 font-sans antialiased">
-    <div id="login-container" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-gray-700 relative overflow-hidden">
-        <div class="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:25px_25px] opacity-20"></div>
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border border-indigo-200 transform transition-all duration-500 ease-in-out">
-            <h1 class="text-3xl font-bold text-gray-900 mb-3 tracking-tight">CRRE Audit Dashboard</h1>
-            <p class="text-gray-600 mb-6 text-sm">Sign in to access your dashboard</p>
-            <div class="space-y-6">
-                <div class="relative">
-                    <input type="email" id="email" class="w-full p-3.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 peer" placeholder=" " required>
-                    <label for="email" class="absolute left-3 top-3.5 text-gray-500 text-sm transition-all duration-200 peer-focus:-top-2 peer-focus:text-xs peer-focus:text-indigo-600 peer-focus:bg-white peer-focus:px-1 peer-not-placeholder-shown:-top-2 peer-not-placeholder-shown:text-xs peer-not-placeholder-shown:bg-white peer-not-placeholder-shown:px-1">Email</label>
+<body class="min-h-screen bg-gray-100">
+    <!-- Login Container -->
+    <div id="login-container" class="min-h-screen">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md mx-auto mt-8 transform transition-all">
+            <div class="text-center mb-6">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23dc2626'%3E%3Cpath d='M20 70h60v10H20zM20 50h40v10H20zM20 30h20v10H20zM70 30h10v50H70z'/%3E%3Ccircle cx='50' cy='20' r='10'/%3E%3C/svg%3E" alt="KPI Logo" class="mx-auto w-16 h-16">
+                <h1 class="text-3xl font-extrabold text-gray-800 mt-4">KPI Dashboard</h1>
+            </div>
+            <div class="mb-6 relative">
+                <input type="email" id="email" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer" placeholder=" ">
+                <label for="email" class="absolute left-3 -top-2 text-sm font-semibold text-gray-700 bg-white px-1 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2 peer-focus:text-sm peer-focus:text-gray-700">Email</label>
+            </div>
+            <div class="mb-6 relative">
+                <input type="password" id="password" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer" placeholder=" ">
+                <label for="password" class="absolute left-3 -top-2 text-sm font-semibold text-gray-700 bg-white px-1 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2 peer-focus:text-sm peer-focus:text-gray-700">Password</label>
+            </div>
+            <button id="login-btn" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Login</button>
+            <p id="error-message" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
+        </div>
+    </div>
+
+    <!-- Dashboard Container -->
+    <div id="dashboard-container" class="hidden min-h-screen">
+        <button class="hamburger hidden fixed top-4 left-4 z-50 bg-red-600 text-white p-3 rounded-lg">☰</button>
+        <div class="flex h-full">
+            <!-- Sidebar -->
+            <div class="w-72 bg-gray-900 text-white p-6 shadow-lg">
+                <div class="user-profile mb-6 flex items-center">
+                    <i class="fas fa-user-circle text-2xl text-red-500 mr-2"></i>
+                    <span id="user-email" class="text-sm font-semibold truncate"></span>
                 </div>
-                <div class="relative">
-                    <input type="password" id="password" class="w-full p-3.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 peer" placeholder=" " required>
-                    <label for="password" class="absolute left-3 top-3.5 text-gray-500 text-sm transition-all duration-200 peer-focus:-top-2 peer-focus:text-xs peer-focus:text-indigo-600 peer-focus:bg-white peer-focus:px-1 peer-not-placeholder-shown:-top-2 peer-not-placeholder-shown:text-xs peer-not-placeholder-shown:bg-white peer-not-placeholder-shown:px-1">Password</label>
-                </div>
-                <p id="error" class="text-red-500 text-center text-sm hidden"></p>
-                <button onclick="handleLogin()" class="w-full p-3.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 active:scale-95">Sign In</button>
+                <h2 class="text-2xl font-bold mb-6 text-red-500">KPI Dashboard</h2>
+                <ul>
+                    <li><a href="#" data-section="Dashboard" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a></li>
+                    <li><a href="#" data-section="Audit 5S" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-check-circle mr-2"></i> Audit 5S</a></li>
+                    <li><a href="#" data-section="Audit Gemba" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-walking mr-2"></i> Audit Gemba</a></li>
+                    <li><a href="#" data-section="TAU Emplissage" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-fill-drip mr-2"></i> TAU Emplissage</a></li>
+                    <li><a href="#" data-section="Taux Absenteisme" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-user-times mr-2"></i> Taux Absenteisme</a></li>
+                    <li><a href="#" data-section="Taux Realisation 5S" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-chart-line mr-2"></i> Taux Realisation 5S</a></li>
+                    <li><a href="#" data-section="Taux Realisation Gemba" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-chart-bar mr-2"></i> Taux Realisation Gemba</a></li>
+                    <li><a href="#" data-section="Top Action 5S" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-star mr-2"></i> Top Action 5S</a></li>
+                    <li><a href="#" data-section="Top Action Gemba" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-tasks mr-2"></i> Top Action Gemba</a></li>
+                    <li><a href="#" data-section="Archive" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-archive mr-2"></i> Archive</a></li>
+                    <li><a href="#" id="logout-btn" class="block p-3 bg-red-500 text-white hover:bg-red-600 rounded-lg transition-all duration-200 mt-4"><i class="fas fa-sign-out-alt mr-2"></i> Logout</a></li>
+                </ul>
+            </div>
+            <!-- Main Content -->
+            <div class="flex-1 p-10 bg-gray-100">
+                <header class="mb-6">
+                    <h1 id="section-title" class="text-3xl font-extrabold text-gray-800">Dashboard</h1>
+                    <nav class="text-sm text-gray-600">KPI Dashboard > <span id="breadcrumb-section">Dashboard</span></nav>
+                </header>
+                <div id="main-content" class="main-content"></div>
             </div>
         </div>
     </div>
-    <div id="dashboard" class="flex min-h-screen hidden">
-        <div id="sidebar" class="w-64 bg-gradient-to-b from-gray-800 to-gray-900 text-white p-6 shadow-xl md:block hidden">
-            <h2 class="text-2xl font-semibold mb-6 tracking-tight">CRRE Dashboard</h2>
-            <ul class="space-y-2">
-                <li><button onclick="showSection('dashboard-section')" class="w-full py-2.5 px-4 bg-gray-700 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 text-left" aria-label="Go to Dashboard">Dashboard</button></li>
-                <li><button onclick="showSection('archive-section')" class="w-full py-2.5 px-4 bg-gray-700 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 text-left" aria-label="Go to Archive">Archive</button></li>
-                <li><button onclick="showSection('audit-5s')" class="w-full py-2.5 px-4 bg-gray-700 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 text-left" aria-label="Go to Audit 5S">Audit 5S</button></li>
-                <li><button onclick="showSection('audit-gemba')" class="w-full py-2.5 px-4 bg-gray-700 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 text-left" aria-label="Go to Audit Gemba">Audit Gemba</button></li>
-                <li><button onclick="showSection('emplissage-tableau')" class="w-full py-2.5 px-4 bg-gray-700 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 text-left" aria-label="Go to TAU Emplissage">TAU Emplissage</button></li>
-                <li><button onclick="showSection('taux-absenteisme')" class="w-full py-2.5 px-4 bg-gray-700 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 text-left" aria-label="Go to Taux Absenteisme">Taux Absenteisme</button></li>
-                <li><button onclick="showSection('taux-realisation-gemba')" class="w-full py-2.5 px-4 bg-gray-700 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 text-left" aria-label="Go to Taux Realisation Gemba">Taux Realisation Gemba</button></li>
-                <li><button onclick="showSection('taux-realisation-5s')" class="w-full py-2.5 px-4 bg-gray-700 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 text-left" aria-label="Go to Taux Realisation 5S">Taux Realisation 5S</button></li>
-                <li><button onclick="showSection('top-action-gemba')" class="w-full py-2.5 px-4 bg-gray-700 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 text-left" aria-label="Go to Top Action Gemba">Top Action Gemba</button></li>
-                <li><button onclick="showSection('top-action-5s')" class="w-full py-2.5 px-4 bg-gray-700 text-white rounded-lg hover:bg-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 text-left" aria-label="Go to Top Action 5S">Top Action 5S</button></li>
-                <li><button onclick="handleLogout()" class="w-full py-2.5 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 text-left" aria-label="Logout">Logout</button></li>
-            </ul>
-        </div>
-        <div class="flex-1 p-4 sm:p-6 md:p-8 bg-gray-50">
-            <button id="sidebar-toggle" class="md:hidden p-2 bg-indigo-600 text-white rounded-lg mb-4 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" onclick="toggleSidebar()">Menu</button>
-            <div id="dashboard-section" class="section">
-                <h2 class="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Dashboard</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 bg-white p-6 rounded-xl shadow-lg">
-                    <div>
-                        <label for="filter-uap" class="block text-sm font-medium text-gray-700 mb-2">Filter by UAP</label>
-                        <input type="text" id="filter-uap" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" placeholder="Enter UAP">
-                    </div>
-                    <div>
-                        <label for="filter-week" class="block text-sm font-medium text-gray-700 mb-2">Filter by Week</label>
-                        <input type="number" id="filter-week" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" placeholder="Enter Week">
-                    </div>
-                    <div>
-                        <label for="filter-date" class="block text-sm font-medium text-gray-700 mb-2">Filter by Date</label>
-                        <input type="date" id="filter-date" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
-                    </div>
-                    <div>
-                        <label for="filter-line" class="block text-sm font-medium text-gray-700 mb-2">Filter by Line</label>
-                        <select id="filter-line" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 select-custom" aria-label="Filter by Line">
-                            <option value="" disabled selected>Select Line</option>
-                            <option value="F01">F01</option>
-                            <option value="F02">F02</option>
-                            <option value="F99">F99</option>
-                            <option value="F83">F83</option>
-                            <option value="F86">F86</option>
-                            <option value="F85">F85</option>
-                            <option value="L76">L76</option>
-                            <option value="L77">L77</option>
-                            <option value="Mure qualite">Mure qualite</option>
-                            <option value="magasinP2">magasinP2</option>
-                            <option value="Magasin P1">Magasin P1</option>
-                            <option value="magasin general">magasin general</option>
-                            <option value="L84">L84</option>
-                            <option value="F87">F87</option>
-                            <option value="F27">F27</option>
-                            <option value="F73">F73</option>
-                            <option value="F15">F15</option>
-                            <option value="skoda">skoda</option>
-                            <option value="L101">L101</option>
-                            <option value="L108">L108</option>
-                            <option value="A12">A12</option>
-                            <option value="F06">F06</option>
-                            <option value="50 T">50 T</option>
-                            <option value="80T">80T</option>
-                            <option value="120T">120T</option>
-                            <option value="125T">125T</option>
-                            <option value="520T">520T</option>
-                            <option value="400T">400T</option>
-                            <option value="420T">420T</option>
-                            <option value="Boy2">Boy2</option>
-                            <option value="Boy3">Boy3</option>
-                        </select>
-                    </div>
-                    <div class="flex items-end">
-                        <button onclick="applyFilters()" class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">Apply Filters</button>
-                    </div>
-                </div>
-                <div class="space-y-8">
-                    <div class="bg-white p-6 rounded-xl shadow-lg">
-                        <h3 class="text-xl font-semibold text-gray-900 mb-4 tracking-tight">Audit 5S</h3>
-                        <canvas id="chart-audit-5s" class="w-full h-64"></canvas>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg">
-                        <h3 class="text-xl font-semibold text-gray-900 mb-4 tracking-tight">Audit Gemba</h3>
-                        <canvas id="chart-audit-gemba" class="w-full h-64"></canvas>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg">
-                        <h3 class="text-xl font-semibold text-gray-900 mb-4 tracking-tight">TAU Emplissage Tableau de Bord</h3>
-                        <canvas id="chart-emplissage-tableau" class="w-full h-64"></canvas>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg">
-                        <h3 class="text-xl font-semibold text-gray-900 mb-4 tracking-tight">Taux Absenteisme</h3>
-                        <canvas id="chart-taux-absenteisme" class="w-full h-64"></canvas>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg">
-                        <h3 class="text-xl font-semibold text-gray-900 mb-4 tracking-tight">Taux Realisation Gemba</h3>
-                        <canvas id="chart-taux-realisation-gemba" class="w-full h-64"></canvas>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg">
-                        <h3 class="text-xl font-semibold text-gray-900 mb-4 tracking-tight">Taux Realisation 5S</h3>
-                        <canvas id="chart-taux-realisation-5s" class="w-full h-64"></canvas>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg">
-                        <h3 class="text-xl font-semibold text-gray-900 mb-4 tracking-tight">Top Action Gemba</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full border-collapse">
-                                <thead>
-                                    <tr class="bg-gray-100 sticky top-0">
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Timestamp</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Line</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Action 1</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Action 2</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Action 3</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Action 4</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Action 5</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="top-action-gemba-table" class="divide-y divide-gray-200"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl shadow-lg">
-                        <h3 class="text-xl font-semibold text-gray-900 mb-4 tracking-tight">Top Action 5S</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full border-collapse">
-                                <thead>
-                                    <tr class="bg-gray-100 sticky top-0">
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Timestamp</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Line</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Action 1</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Action 2</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Action 3</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Action 4</th>
-                                        <th class="p-3 text-left text-sm font-semibold text-gray-900">Action 5</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="top-action-5s-table" class="divide-y divide-gray-200"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div id="archive-section" class="section hidden">
-                <h2 class="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Archive</h2>
-                <div class="overflow-x-auto bg-white rounded-xl shadow-lg">
-                    <table class="w-full border-collapse">
-                        <thead>
-                            <tr class="bg-gray-100 sticky top-0">
-                                <th class="p-3 text-left text-sm font-semibold text-gray-900">Section</th>
-                                <th class="p-3 text-left text-sm font-semibold text-gray-900">Timestamp</th>
-                                <th class="p-3 text-left text-sm font-semibold text-gray-900">Key Data</th>
-                                <th class="p-3 text-left text-sm font-semibold text-gray-900">UAP</th>
-                                <th class="p-3 text-left text-sm font-semibold text-gray-900">Week</th>
-                                <th class="p-3 text-left text-sm font-semibold text-gray-900">Date</th>
-                                <th class="p-3 text-left text-sm font-semibold text-gray-900">Line</th>
-                                <th class="p-3 text-left text-sm font-semibold text-gray-900">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="archive-table-body" class="divide-y divide-gray-200"></tbody>
-                    </table>
-                </div>
-            </div>
-            <div id="audit-5s" class="section hidden">
-                <h2 class="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Audit 5S</h2>
-                <div class="space-y-6 max-w-lg">
-                    <div class="relative">
-                        <label for="audit-5s-date" class="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                        <input type="date" id="audit-5s-date" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required>
-                    </div>
-                    <div class="relative">
-                        <label for="audit-5s-week" class="block text-sm font-medium text-gray-700 mb-2">Week</label>
-                        <input type="number" id="audit-5s-week" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="1">
-                    </div>
-                    <div class="relative">
-                        <label for="audit-5s-line" class="block text-sm font-medium text-gray-700 mb-2">Line</label>
-                        <select id="audit-5s-line" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 select-custom" required>
-                            <option value="" disabled selected>Select Line</option>
-                            <option value="F01">F01</option>
-                            <option value="F02">F02</option>
-                            <option value="F99">F99</option>
-                            <option value="F83">F83</option>
-                            <option value="F86">F86</option>
-                            <option value="F85">F85</option>
-                            <option value="L76">L76</option>
-                            <option value="L77">L77</option>
-                            <option value="Mure qualite">Mure qualite</option>
-                            <option value="magasinP2">magasinP2</option>
-                            <option value="Magasin P1">Magasin P1</option>
-                            <option value="magasin general">magasin general</option>
-                            <option value="L84">L84</option>
-                            <option value="F87">F87</option>
-                            <option value="F27">F27</option>
-                            <option value="F73">F73</option>
-                            <option value="F15">F15</option>
-                            <option value="skoda">skoda</option>
-                            <option value="L101">L101</option>
-                            <option value="L108">L108</option>
-                            <option value="A12">A12</option>
-                            <option value="F06">F06</option>
-                            <option value="50 T">50 T</option>
-                            <option value="80T">80T</option>
-                            <option value="120T">120T</option>
-                            <option value="125T">125T</option>
-                            <option value="520T">520T</option>
-                            <option value="400T">400T</option>
-                            <option value="420T">420T</option>
-                            <option value="Boy2">Boy2</option>
-                            <option value="Boy3">Boy3</option>
-                        </select>
-                    </div>
-                    <div class="relative">
-                        <label for="audit-5s-uap" class="block text-sm font-medium text-gray-700 mb-2">UAP</label>
-                        <select id="audit-5s-uap" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 select-custom" required>
-                            <option value="" disabled selected>Select UAP</option>
-                            <option value="UAP1">UAP1</option>
-                            <option value="UAP2">UAP2</option>
-                        </select>
-                    </div>
-                    <div class="relative">
-                        <label for="audit-5s-result" class="block text-sm font-medium text-gray-700 mb-2">Result (%)</label>
-                        <input type="number" id="audit-5s-result" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="0" max="100">
-                    </div>
-                    <button onclick="submitForm('Audit 5S', ['audit-5s-date', 'audit-5s-week', 'audit-5s-line', 'audit-5s-uap', 'audit-5s-result'])" class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">Submit</button>
-                </div>
-            </div>
-            <div id="audit-gemba" class="section hidden">
-                <h2 class="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Audit Gemba</h2>
-                <div class="space-y-6 max-w-lg">
-                    <div class="relative">
-                        <label for="audit-gemba-date" class="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                        <input type="date" id="audit-gemba-date" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required>
-                    </div>
-                    <div class="relative">
-                        <label for="audit-gemba-week" class="block text-sm font-medium text-gray-700 mb-2">Week</label>
-                        <input type="number" id="audit-gemba-week" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="1">
-                    </div>
-                    <div class="relative">
-                        <label for="audit-gemba-line" class="block text-sm font-medium text-gray-700 mb-2">Line</label>
-                        <select id="audit-gemba-line" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 select-custom" required>
-                            <option value="" disabled selected>Select Line</option>
-                            <option value="F01">F01</option>
-                            <option value="F02">F02</option>
-                            <option value="F99">F99</option>
-                            <option value="F83">F83</option>
-                            <option value="F86">F86</option>
-                            <option value="F85">F85</option>
-                            <option value="L76">L76</option>
-                            <option value="L77">L77</option>
-                            <option value="Mure qualite">Mure qualite</option>
-                            <option value="magasinP2">magasinP2</option>
-                            <option value="Magasin P1">Magasin P1</option>
-                            <option value="magasin general">magasin general</option>
-                            <option value="L84">L84</option>
-                            <option value="F87">F87</option>
-                            <option value="F27">F27</option>
-                            <option value="F73">F73</option>
-                            <option value="F15">F15</option>
-                            <option value="skoda">skoda</option>
-                            <option value="L101">L101</option>
-                            <option value="L108">L108</option>
-                            <option value="A12">A12</option>
-                            <option value="F06">F06</option>
-                            <option value="50 T">50 T</option>
-                            <option value="80T">80T</option>
-                            <option value="120T">120T</option>
-                            <option value="125T">125T</option>
-                            <option value="520T">520T</option>
-                            <option value="400T">400T</option>
-                            <option value="420T">420T</option>
-                            <option value="Boy2">Boy2</option>
-                            <option value="Boy3">Boy3</option>
-                        </select>
-                    </div>
-                    <div class="relative">
-                        <label for="audit-gemba-uap" class="block text-sm font-medium text-gray-700 mb-2">UAP</label>
-                        <select id="audit-gemba-uap" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 select-custom" required>
-                            <option value="" disabled selected>Select UAP</option>
-                            <option value="UAP1">UAP1</option>
-                            <option value="UAP2">UAP2</option>
-                        </select>
-                    </div>
-                    <div class="relative">
-                        <label for="audit-gemba-result" class="block text-sm font-medium text-gray-700 mb-2">Result (%)</label>
-                        <input type="number" id="audit-gemba-result" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="0" max="100">
-                    </div>
-                    <button onclick="submitForm('Audit Gemba', ['audit-gemba-date', 'audit-gemba-week', 'audit-gemba-line', 'audit-gemba-uap', 'audit-gemba-result'])" class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">Submit</button>
-                </div>
-            </div>
-            <div id="emplissage-tableau" class="section hidden">
-                <h2 class="text-3xl font-bold text-gray-900 mb-6 tracking-tight">TAU Emplissage Tableau de Bord</h2>
-                <div class="space-y-6 max-w-lg">
-                    <div class="relative">
-                        <label for="emplissage-date" class="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                        <input type="date" id="emplissage-date" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required>
-                    </div>
-                    <div class="relative">
-                        <label for="emplissage-week" class="block text-sm font-medium text-gray-700 mb-2">Week</label>
-                        <input type="number" id="emplissage-week" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="1">
-                    </div>
-                    <div class="relative">
-                        <label for="emplissage-line" class="block text-sm font-medium text-gray-700 mb-2">Line</label>
-                        <select id="emplissage-line" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 select-custom" required>
-                            <option value="" disabled selected>Select Line</option>
-                            <option value="F01">F01</option>
-                            <option value="F02">F02</option>
-                            <option value="F99">F99</option>
-                            <option value="F83">F83</option>
-                            <option value="F86">F86</option>
-                            <option value="F85">F85</option>
-                            <option value="L76">L76</option>
-                            <option value="L77">L77</option>
-                            <option value="Mure qualite">Mure qualite</option>
-                            <option value="magasinP2">magasinP2</option>
-                            <option value="Magasin P1">Magasin P1</option>
-                            <option value="magasin general">magasin general</option>
-                            <option value="L84">L84</option>
-                            <option value="F87">F87</option>
-                            <option value="F27">F27</option>
-                            <option value="F73">F73</option>
-                            <option value="F15">F15</option>
-                            <option value="skoda">skoda</option>
-                            <option value="L101">L101</option>
-                            <option value="L108">L108</option>
-                            <option value="A12">A12</option>
-                            <option value="F06">F06</option>
-                            <option value="50 T">50 T</option>
-                            <option value="80T">80T</option>
-                            <option value="120T">120T</option>
-                            <option value="125T">125T</option>
-                            <option value="520T">520T</option>
-                            <option value="400T">400T</option>
-                            <option value="420T">420T</option>
-                            <option value="Boy2">Boy2</option>
-                            <option value="Boy3">Boy3</option>
-                        </select>
-                    </div>
-                    <div class="relative">
-                        <label for="emplissage-uap" class="block text-sm font-medium text-gray-700 mb-2">UAP</label>
-                        <select id="emplissage-uap" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 select-custom" required>
-                            <option value="" disabled selected>Select UAP</option>
-                            <option value="UAP1">UAP1</option>
-                            <option value="UAP2">UAP2</option>
-                        </select>
-                    </div>
-                    <div class="relative">
-                        <label for="emplissage-percentage" class="block text-sm font-medium text-gray-700 mb-2">Pourcentage</label>
-                        <input type="number" id="emplissage-percentage" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="0" max="100">
-                    </div>
-                    <div class="relative">
-                        <label for="emplissage-commentaire" class="block text-sm font-medium text-gray-700 mb-2">Commentaire (Optional)</label>
-                        <textarea id="emplissage-commentaire" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 resize-y min-h-[100px]"></textarea>
-                    </div>
-                    <button onclick="submitForm('Emplissage Tableau de Bord', ['emplissage-date', 'emplissage-week', 'emplissage-line', 'emplissage-uap', 'emplissage-percentage', 'emplissage-commentaire'])" class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">Submit</button>
-                </div>
-            </div>
-            <div id="taux-absenteisme" class="section hidden">
-                <h2 class="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Taux Absenteisme</h2>
-                <div class="space-y-6 max-w-lg">
-                    <div class="relative">
-                        <label for="absenteisme-date" class="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                        <input type="date" id="absenteisme-date" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required>
-                    </div>
-                    <div class="relative">
-                        <label for="absenteisme-name" class="block text-sm font-medium text-gray-700 mb-2">Name</label>
-                        <select id="absenteisme-name" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 select-custom" required>
-                            <option value="" disabled selected>Select Name</option>
-                            <option value="Ahmed KHAMESI">Ahmed KHAMESI</option>
-                            <option value="Anis YAHYAOUI">Anis YAHYAOUI</option>
-                            <option value="Chemsi Mohamed">Chemsi Mohamed</option>
-                            <option value="Maugendre Jérémie">Maugendre Jérémie</option>
-                            <option value="Gargouri Mohamed Amine">Gargouri Mohamed Amine</option>
-                            <option value="Hafaiedh Sami">Hafaiedh Sami</option>
-                            <option value="Tarek Jaouada">Tarek Jaouada</option>
-                            <option value="Sghair Bedis">Sghair Bedis</option>
-                            <option value="Amine Aloui">Amine Aloui</option>
-                            <option value="Chakroun Sahbi">Chakroun Sahbi</option>
-                        </select>
-                    </div>
-                    <div class="relative">
-                        <label for="absenteisme-week" class="block text-sm font-medium text-gray-700 mb-2">Week</label>
-                        <input type="number" id="absenteisme-week" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="1">
-                    </div>
-                    <div class="relative">
-                        <label for="absenteisme-status" class="block text-sm font-medium text-gray-700 mb-2">Status (1 = Present, 0 = Absent)</label>
-                        <select id="absenteisme-status" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 select-custom" required>
-                            <option value="" disabled selected>Select Status</option>
-                            <option value="1">Present</option>
-                            <option value="0">Absent</option>
-                        </select>
-                    </div>
-                    <button onclick="submitForm('Taux Absenteisme', ['absenteisme-date', 'absenteisme-name', 'absenteisme-week', 'absenteisme-status'])" class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">Submit</button>
-                </div>
-            </div>
-            <div id="taux-realisation-gemba" class="section hidden">
-                <h2 class="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Taux Realisation Audit Gemba</h2>
-                <div class="space-y-6 max-w-lg">
-                    <div class="relative">
-                        <label for="realisation-gemba-audits" class="block text-sm font-medium text-gray-700 mb-2">Number of Audits per Week</label>
-                        <input type="number" id="realisation-gemba-audits" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="1">
-                    </div>
-                    <div class="relative">
-                        <label for="realisation-gemba-week" class="block text-sm font-medium text-gray-700 mb-2">Week</label>
-                        <input type="number" id="realisation-gemba-week" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="1">
-                    </div>
-                    <div class="relative">
-                        <label for="realisation-gemba-realised" class="block text-sm font-medium text-gray-700 mb-2">Number of Audits Realised</label>
-                        <input type="number" id="realisation-gemba-realised" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="0">
-                    </div>
-                    <button onclick="submitForm('Taux Realisation Gemba', ['realisation-gemba-audits', 'realisation-gemba-week', 'realisation-gemba-realised'])" class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">Submit</button>
-                </div>
-            </div>
-            <div id="taux-realisation-5s" class="section hidden">
-                <h2 class="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Taux Realisation 5S</h2>
-                <div class="space-y-6 max-w-lg">
-                    <div class="relative">
-                        <label for="realisation-5s-audits" class="block text-sm font-medium text-gray-700 mb-2">Number of Audits per Week</label>
-                        <input type="number" id="realisation-5s-audits" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="1">
-                    </div>
-                    <div class="relative">
-                        <label for="realisation-5s-week" class="block text-sm font-medium text-gray-700 mb-2">Week</label>
-                        <input type="number" id="realisation-5s-week" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="1">
-                    </div>
-                    <div class="relative">
-                        <label for="realisation-5s-realised" class="block text-sm font-medium text-gray-700 mb-2">Number of Audits Realised</label>
-                        <input type="number" id="realisation-5s-realised" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required min="0">
-                    </div>
-                    <button onclick="submitForm('Taux Realisation 5S', ['realisation-5s-audits', 'realisation-5s-week', 'realisation-5s-realised'])" class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">Submit</button>
-                </div>
-            </div>
-            <div id="top-action-gemba" class="section hidden">
-                <h2 class="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Top Action Gemba</h2>
-                <div class="space-y-6 max-w-lg">
-                    <div class="relative">
-                        <label for="top-gemba-line" class="block text-sm font-medium text-gray-700 mb-2">Line</label>
-                        <input type="text" id="top-gemba-line" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required>
-                    </div>
-                    <div class="relative">
-                        <label for="top-gemba-action1" class="block text-sm font-medium text-gray-700 mb-2">Action 1 (Optional)</label>
-                        <input type="text" id="top-gemba-action1" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
-                    </div>
-                    <div class="relative">
-                        <label for="top-gemba-action2" class="block text-sm font-medium text-gray-700 mb-2">Action 2 (Optional)</label>
-                        <input type="text" id="top-gemba-action2" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
-                    </div>
-                    <div class="relative">
-                        <label for="top-gemba-action3" class="block text-sm font-medium text-gray-700 mb-2">Action 3 (Optional)</label>
-                        <input type="text" id="top-gemba-action3" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
-                    </div>
-                    <div class="relative">
-                        <label for="top-gemba-action4" class="block text-sm font-medium text-gray-700 mb-2">Action 4 (Optional)</label>
-                        <input type="text" id="top-gemba-action4" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
-                    </div>
-                    <div class="relative">
-                        <label for="top-gemba-action5" class="block text-sm font-medium text-gray-700 mb-2">Action 5 (Optional)</label>
-                        <input type="text" id="top-gemba-action5" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
-                    </div>
-                    <button onclick="submitForm('Top Action Gemba', ['top-gemba-line', 'top-gemba-action1', 'top-gemba-action2', 'top-gemba-action3', 'top-gemba-action4', 'top-gemba-action5'])" class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">Submit</button>
-                </div>
-            </div>
-            <div id="top-action-5s" class="section hidden">
-                <h2 class="text-3xl font-bold text-gray-900 mb-6 tracking-tight">Top Action 5S</h2>
-                <div class="space-y-6 max-w-lg">
-                    <div class="relative">
-                        <label for="top-5s-line" class="block text-sm font-medium text-gray-700 mb-2">Line</label>
-                        <input type="text" id="top-5s-line" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200" required>
-                    </div>
-                    <div class="relative">
-                        <label for="top-5s-action1" class="block text-sm font-medium text-gray-700 mb-2">Action 1 (Optional)</label>
-                        <input type="text" id="top-5s-action1" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
-                    </div>
-                    <div class="relative">
-                        <label for="top-5s-action2" class="block text-sm font-medium text-gray-700 mb-2">Action 2 (Optional)</label>
-                        <input type="text" id="top-5s-action2" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
-                    </div>
-                    <div class="relative">
-                        <label for="top-5s-action3" class="block text-sm font-medium text-gray-700 mb-2">Action 3 (Optional)</label>
-                        <input type="text" id="top-5s-action3" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
-                    </div>
-                    <div class="relative">
-                        <label for="top-5s-action4" class="block text-sm font-medium text-gray-700 mb-2">Action 4 (Optional)</label>
-                        <input type="text" id="top-5s-action4" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
-                    </div>
-                    <div class="relative">
-                        <label for="top-5s-action5" class="block text-sm font-medium text-gray-700 mb-2">Action 5 (Optional)</label>
-                        <input type="text" id="top-5s-action5" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200">
-                    </div>
-                    <button onclick="submitForm('Top Action 5S', ['top-5s-line', 'top-5s-action1', 'top-5s-action2', 'top-5s-action3', 'top-5s-action4', 'top-5s-action5'])" class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105">Submit</button>
-                </div>
-            </div>
-            <div id="details-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden transition-opacity duration-300">
-                <div class="bg-white p-6 rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto transform transition-transform duration-300 translate-y-0">
-                    <h3 class="text-xl font-semibold text-gray-900 mb-4 tracking-tight">Submission Details</h3>
-                    <pre id="modal-details" class="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm text-gray-800"></pre>
-                    <button onclick="closeModal()" class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 mt-4">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script type="module" src="script.js"></script>
+
+    <script src="script.js"></script>
 </body>
 </html>
