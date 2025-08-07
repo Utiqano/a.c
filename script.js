@@ -1,441 +1,1191 @@
-// Import Firebase SDK
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, deleteDoc, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
 // Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyARc68C9RvqPHedrAtxJcZCUeZIEfn1XnA",
-    authDomain: "dashbord-10e83.firebaseapp.com",
-    projectId: "dashbord-10e83",
-    storageBucket: "dashbord-10e83.firebasestorage.app",
-    messagingSenderId: "1060154426951",
-    appId: "1:1060154426951:web:121e08b5f1ec5323f49362",
-    measurementId: "G-97L4PN4Q0P"
+  apiKey: "AIzaSyARc68C9RvqPHedrAtxJcZCUeZIEfn1XnA",
+  authDomain: "dashbord-10e83.firebaseapp.com",
+  databaseURL: "https://dashbord-10e83-default-rtdb.firebaseio.com",
+  projectId: "dashbord-10e83",
+  storageBucket: "dashbord-10e83.firebasestorage.app",
+  messagingSenderId: "1060154426951",
+  appId: "1:1060154426951:web:121e08b5f1ec5323f49362",
+  measurementId: "G-97L4PN4Q0P"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const database = getDatabase(app);
 
-let chartInstances = {};
+document.addEventListener("DOMContentLoaded", () => {
+  const loginContainer = document.getElementById("login-container");
+  const dashboardContainer = document.getElementById("dashboard-container");
+  const errorMessage = document.getElementById("error-message");
+  const loginBtn = document.getElementById("login-btn");
+  const logoutBtn = document.getElementById("logout-btn");
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const mainContent = document.querySelector(".main-content");
+  const sectionTitle = document.getElementById("section-title");
+  const breadcrumbSection = document.getElementById("breadcrumb-section");
+  const userEmail = document.getElementById("user-email");
+  const sidebar = document.querySelector(".w-72");
+  const hamburger = document.querySelector(".hamburger");
 
-// Handle authentication state
-onAuthStateChanged(auth, user => {
-    console.log('Auth state:', user ? `User ${user.uid} (${user.email})` : 'No user');
-    if (user) {
-        document.getElementById('login-container').classList.add('hidden');
-        document.getElementById('dashboard').classList.remove('hidden');
-        showSection('dashboard-section');
-    } else {
-        document.getElementById('login-container').classList.remove('hidden');
-        document.getElementById('dashboard').classList.add('hidden');
+  // Initialize auditData structure
+  let auditData = {
+    "Audit 5S": [],
+    "Audit Gemba": [],
+    "TAU Emplissage": [],
+    "Taux Absenteisme": [],
+    "Taux Realisation 5S": [],
+    "Taux Realisation Gemba": [],
+    "Top Action 5S": [],
+    "Top Action Gemba": []
+  };
+
+  let currentUser = null;
+
+  // Ligne options
+  const lignes = [
+    "50T", "80T", "120T", "125T", "520T", "400T", "550T", "420T", "450T",
+    "A12", "Boy2", "Boy3", "F06", "L101", "L108", "SKOUDA", "F73", "F27",
+    "F87", "L84", "Magasin general", "Magasin P1", "Magasin P2", "F15",
+    "F01", "F02", "F83", "F99", "F86", "F85", "L76", "L77", "Mure qualite"
+  ];
+
+  // UAP options
+  const uaps = ["UAP1", "UAP2"];
+
+  // Employee names for Taux Absenteisme
+  const employees = [
+    "Ahmed KHAMESI", "Anis YAHYAOUI", "Chemsi Mohamed", "Maugendre Jérémie",
+    "Gargouri Mohamed Amine", "Hafaiedh Sami", "Tarek Jaouada", "Sghair Bedis",
+    "Amine Aloui", "Chakroun Sahbi"
+  ];
+
+  // Predefined colors for charts
+  const colors = [
+    "#dc2626", "#ef4444", "#f87171", "#b91c1c", "#991b1b", "#7f1d1d",
+    "#374151", "#4b5563", "#6b7280", "#9ca3af", "#d1d5db", "#e5e7eb",
+    "#3b82f6", "#2563eb", "#1d4ed8", "#60a5fa", "#93c5fd", "#bfdbfe",
+    "#10b981", "#059669", "#047857", "#34d399", "#6ee7b7", "#a7f3d0",
+    "#f97316", "#ea580c", "#c2410c", "#fb923c", "#fdba74", "#fed7aa",
+    "#8b5cf6", "#7c3aed", "#6d28d9", "#a78bfa", "#c4b5fd", "#ddd6fe"
+  ];
+
+  // Load data from Firebase
+  function loadFirebaseData(callback) {
+    let loadedSections = 0;
+    const totalSections = Object.keys(auditData).length;
+    Object.keys(auditData).forEach((section) => {
+      const dataRef = ref(database, `auditData/${section}`);
+      onValue(dataRef, (snapshot) => {
+        try {
+          const data = snapshot.val();
+          auditData[section] = data ? Object.values(data) : [];
+          console.log(`Loaded data for ${section}:`, auditData[section]);
+          loadedSections++;
+          if (loadedSections === totalSections && callback) {
+            console.log("All Firebase data loaded:", auditData);
+            callback();
+          }
+        } catch (error) {
+          console.error(`Error loading data for ${section}:`, error);
+        }
+      }, (error) => {
+        console.error(`Firebase error for ${section}:`, error);
+        loadedSections++;
+        if (loadedSections === totalSections && callback) {
+          callback();
+        }
+      });
+    });
+  }
+
+  // Login functionality with Firebase Auth
+  loginBtn.addEventListener("click", () => {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!email || !password) {
+      errorMessage.textContent = "Please enter both email and password";
+      errorMessage.classList.remove("hidden");
+      return;
     }
-});
-
-window.handleLogin = function() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const error = document.getElementById('error');
 
     signInWithEmailAndPassword(auth, email, password)
-        .then(() => {
-            error.classList.add('hidden');
-        })
-        .catch(err => {
-            error.textContent = err.message;
-            error.classList.remove('hidden');
+      .then((userCredential) => {
+        currentUser = userCredential.user;
+        userEmail.textContent = currentUser.email;
+        loginContainer.classList.add("hidden");
+        loginContainer.style.display = "none";
+        dashboardContainer.classList.remove("hidden");
+        dashboardContainer.style.display = "block";
+        dashboardContainer.style.opacity = "0";
+        setTimeout(() => {
+          dashboardContainer.style.opacity = "1";
+          dashboardContainer.style.transition = "opacity 0.5s ease";
+        }, 10);
+        errorMessage.classList.add("hidden");
+        if (hamburger) hamburger.classList.remove("hidden");
+        loadFirebaseData(() => {
+          console.log("Rendering Dashboard after login");
+          renderSection("Dashboard");
         });
-};
+        const dashboardLink = document.querySelector('a[data-section="Dashboard"]');
+        if (dashboardLink) {
+          sidebarLinks.forEach((link) => link.classList.remove("active"));
+          dashboardLink.classList.add("active");
+        }
+      })
+      .catch((error) => {
+        console.error("Login error:", error);
+        errorMessage.textContent = "Invalid email or password";
+        errorMessage.classList.remove("hidden");
+      });
+  });
 
-window.handleLogout = function() {
-    signOut(auth)
-        .catch(err => {
-            alert('Error logging out: ' + err.message);
-        });
-};
-
-window.toggleSidebar = function() {
-    const sidebar = document.getElementById('sidebar');
-    sidebar.classList.toggle('hidden');
-};
-
-window.showSection = function(sectionId) {
-    document.querySelectorAll('.section').forEach(section => {
-        section.classList.add('hidden');
+  // Logout functionality
+  logoutBtn.addEventListener("click", () => {
+    signOut(auth).then(() => {
+      currentUser = null;
+      loginContainer.classList.remove("hidden");
+      loginContainer.style.display = "flex";
+      dashboardContainer.classList.add("hidden");
+      dashboardContainer.style.display = "none";
+      emailInput.value = "";
+      passwordInput.value = "";
+      errorMessage.classList.add("hidden");
+      if (sidebar) sidebar.classList.remove("active");
+      if (hamburger) hamburger.classList.add("hidden");
+      sidebarLinks.forEach((link) => link.classList.remove("active"));
+    }).catch((error) => {
+      console.error("Logout error:", error);
     });
-    document.getElementById(sectionId).classList.remove('hidden');
+  });
 
-    document.querySelectorAll('.sidebar button').forEach(button => {
-        button.classList.remove('bg-indigo-600');
-        button.classList.add('bg-gray-700');
+  // Hamburger menu toggle
+  if (hamburger) {
+    hamburger.addEventListener("click", () => {
+      console.log("Hamburger clicked, toggling sidebar");
+      sidebar.classList.toggle("active");
     });
-    const activeButton = document.querySelector(`button[onclick="showSection('${sectionId}')"]`);
-    activeButton.classList.remove('bg-gray-700');
-    activeButton.classList.add('bg-indigo-600');
+  }
 
-    if (sectionId === 'dashboard-section') {
-        applyFilters();
-    } else if (sectionId === 'archive-section') {
-        updateArchiveTable();
-    }
-};
+  // Sidebar navigation
+  const sidebarLinks = document.querySelectorAll(".w-72 ul li a:not(#logout-btn)");
+  sidebarLinks.forEach((link) => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      const section = link.getAttribute("data-section");
+      console.log(`Sidebar link clicked: ${section}`);
+      loadFirebaseData(() => {
+        console.log(`Rendering section: ${section}`);
+        renderSection(section);
+      });
+      if (sidebar) sidebar.classList.remove("active");
+      sidebarLinks.forEach((l) => l.classList.remove("active"));
+      link.classList.add("active");
+    });
+  });
 
-window.submitForm = async function(sectionName, inputIds) {
-    try {
-        const user = auth.currentUser;
-        if (!user) {
-            alert('Please log in to submit data.');
-            document.getElementById('login-container').classList.remove('hidden');
-            document.getElementById('dashboard').classList.add('hidden');
-            return;
-        }
-        const formData = { 
-            section: sectionName, 
-            timestamp: new Date().toISOString(),
-            userId: user.uid 
-        };
-        inputIds.forEach(id => {
-            const value = document.getElementById(id).value;
-            formData[id] = value === null || value === undefined ? '' : String(value).replace(/[^\x20-\x7E]/g, '');
-        });
+  // Success and error messages
+  function showSuccess(element, message) {
+    element.textContent = message;
+    element.classList.remove("text-red-600");
+    element.classList.add("text-green-600");
+    element.classList.remove("hidden");
+    setTimeout(() => {
+      element.classList.add("hidden");
+    }, 3000);
+  }
 
-        console.log('Submitting formData:', formData);
-        await addDoc(collection(db, 'submissions'), formData);
-        alert(`${sectionName} submitted successfully`);
+  function showError(element, message) {
+    element.textContent = message;
+    element.classList.remove("text-green-600");
+    element.classList.add("text-red-600");
+    element.classList.remove("hidden");
+  }
 
-        document.querySelectorAll(`#${sectionName.toLowerCase().replace(/\s+/g, '-')}-section input, #${sectionName.toLowerCase().replace(/\s+/g, '-')}-section textarea, #${sectionName.toLowerCase().replace(/\s+/g, '-')}-section select`).forEach(input => {
-            input.value = '';
-        });
+  // Render content based on sidebar selection
+  function renderSection(section) {
+    console.log(`Starting renderSection for: ${section}`);
+    mainContent.style.opacity = "0";
+    setTimeout(() => {
+      try {
+        sectionTitle.textContent = section;
+        breadcrumbSection.textContent = section;
+        mainContent.innerHTML = "";
 
-        applyFilters();
-        if (!document.getElementById('archive-section').classList.contains('hidden')) {
-            updateArchiveTable();
-        }
-    } catch (err) {
-        console.error('Submit error:', err);
-        alert('Error submitting form: ' + err.message);
-    }
-};
+        if (section === "Audit 5S" || section === "Audit Gemba") {
+          mainContent.innerHTML = `
+            <h1 class="text-4xl font-extrabold text-gray-800">${section}</h1>
+            <p class="mt-6 text-lg text-gray-600">Enter audit data below.</p>
+            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+              <div class="mb-4">
+                <label for="date" class="block text-sm font-semibold text-gray-700">Date</label>
+                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+              </div>
+              <div class="mb-4">
+                <label for="week" class="block text-sm font-semibold text-gray-700">Week</label>
+                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)">
+              </div>
+              <div class="mb-4">
+                <label for="uap" class="block text-sm font-semibold text-gray-700">UAP</label>
+                <select id="uap" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                  <option value="">Select a UAP</option>
+                  ${uaps.map((uap) => `<option value="${uap}">${uap}</option>`).join("")}
+                </select>
+              </div>
+              <div class="mb-4">
+                <label for="ligne" class="block text-sm font-semibold text-gray-700">Ligne</label>
+                <select id="ligne" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                  <option value="">Select a ligne</option>
+                  ${lignes.map((ligne) => `<option value="${ligne}">${ligne}</option>`).join("")}
+                </select>
+              </div>
+              <div class="mb-4">
+                <label for="score" class="block text-sm font-semibold text-gray-700">Score (%)</label>
+                <input type="number" id="score" min="0" max="100" step="0.1" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter score (0-100)">
+              </div>
+              <button id="submit-audit" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
+              <p id="form-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
+            </div>
+          `;
 
-function getBarColor(value) {
-    if (value >= 85) return 'rgba(75, 192, 192, 0.8)';
-    if (value >= 75) return 'rgba(255, 159, 64, 0.8)';
-    return 'rgba(255, 99, 132, 0.8)';
-}
+          const submitBtn = document.getElementById("submit-audit");
+          submitBtn.addEventListener("click", () => {
+            const date = document.getElementById("date").value;
+            const week = document.getElementById("week").value;
+            const uap = document.getElementById("uap").value;
+            const ligne = document.getElementById("ligne").value;
+            const score = document.getElementById("score").value;
+            const formError = document.getElementById("form-error");
 
-window.applyFilters = async function() {
-    const filterUAP = document.getElementById('filter-uap').value.toLowerCase();
-    const filterWeek = document.getElementById('filter-week').value;
-    const filterDate = document.getElementById('filter-date').value;
-    const filterLine = document.getElementById('filter-line').value;
+            const missingFields = [];
+            if (!date) missingFields.push("Date");
+            if (!week) missingFields.push("Week");
+            if (!uap) missingFields.push("UAP");
+            if (!ligne) missingFields.push("Ligne");
+            if (!score) missingFields.push("Score");
 
-    try {
-        const user = auth.currentUser;
-        if (!user) {
-            alert('Please log in to view data.');
-            return;
-        }
-        const q = query(collection(db, 'submissions'), where('userId', '==', user.uid));
-        const submissions = [];
-
-        console.log('Applying filters:', { filterUAP, filterWeek, filterDate, filterLine });
-
-        const snapshot = await getDocs(q);
-        snapshot.forEach(doc => {
-            const data = { id: doc.id, ...doc.data() };
-            let matchesUAP = true;
-            let matchesWeek = true;
-            let matchesDate = true;
-            let matchesLine = true;
-
-            if (filterUAP) {
-                matchesUAP = (data['audit-5s-uap'] || data['audit-gemba-uap'] || data['emplissage-uap'] || '').toLowerCase().includes(filterUAP);
-            }
-            if (filterWeek) {
-                matchesWeek = (
-                    data['audit-5s-week'] === filterWeek ||
-                    data['audit-gemba-week'] === filterWeek ||
-                    data['absenteisme-week'] === filterWeek ||
-                    data['realisation-gemba-week'] === filterWeek ||
-                    data['realisation-5s-week'] === filterWeek ||
-                    data['emplissage-week'] === filterWeek
-                );
-            }
-            if (filterDate) {
-                matchesDate = (
-                    data['audit-5s-date'] === filterDate ||
-                    data['audit-gemba-date'] === filterDate ||
-                    data['absenteisme-date'] === filterDate ||
-                    data['emplissage-date'] === filterDate
-                );
-            }
-            if (filterLine) {
-                matchesLine = (
-                    data['audit-5s-line'] === filterLine ||
-                    data['audit-gemba-line'] === filterLine ||
-                    data['emplissage-line'] === filterLine
-                );
+            if (missingFields.length) {
+              showError(formError, `Please fill: ${missingFields.join(", ")}`);
+              return;
             }
 
-            if (matchesUAP && matchesWeek && matchesDate && matchesLine) {
-                submissions.push(data);
+            if (week < 1 || week > 52) {
+              showError(formError, "Week must be between 1 and 52");
+              return;
             }
-        });
+            if (score < 0 || score > 100) {
+              showError(formError, "Score must be between 0 and 100");
+              return;
+            }
 
-        console.log('Filtered submissions:', submissions);
-        if (submissions.length === 0) {
-            alert('No data matches the selected filters.');
-        }
+            const dataRef = ref(database, `auditData/${section}`);
+            push(dataRef, {
+              date,
+              week: parseInt(week),
+              uap,
+              ligne,
+              score: parseFloat(score)
+            }).then(() => {
+              showSuccess(formError, "Data submitted successfully!");
+              loadFirebaseData(() => renderSection(section));
+            }).catch((error) => {
+              console.error(`Error submitting ${section} data:`, error);
+              showError(formError, "Failed to submit data");
+            });
+          });
+        } else if (section === "TAU Emplissage") {
+          mainContent.innerHTML = `
+            <h1 class="text-4xl font-extrabold text-gray-800">${section}</h1>
+            <p class="mt-6 text-lg text-gray-600">Enter TAU Emplissage data below.</p>
+            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+              <div class="mb-4">
+                <label for="date" class="block text-sm font-semibold text-gray-700">Date</label>
+                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+              </div>
+              <div class="mb-4">
+                <label for="week" class="block text-sm font-semibold text-gray-700">Week</label>
+                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)">
+              </div>
+              <div class="mb-4">
+                <label for="uap" class="block text-sm font-semibold text-gray-700">UAP</label>
+                <select id="uap" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                  <option value="">Select a UAP</option>
+                  ${uaps.map((uap) => `<option value="${uap}">${uap}</option>`).join("")}
+                </select>
+              </div>
+              <div class="mb-4">
+                <label for="resultat" class="block text-sm font-semibold text-gray-700">Resultat (%)</label>
+                <input type="number" id="resultat" min="0" max="100" step="0.1" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter resultat (0-100)">
+              </div>
+              <div class="mb-4">
+                <label for="commentaire" class="block text-sm font-semibold text-gray-700">Commentaire</label>
+                <input type="text" id="commentaire" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter comment (optional)">
+              </div>
+              <button id="submit-tau" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
+              <p id="form-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
+            </div>
+          `;
 
-        updateCharts(submissions);
-        updateActionTables(submissions);
-    } catch (err) {
-        console.error('Filter error:', err);
-        alert('Error fetching submissions: ' + err.message);
-    }
-};
+          const submitBtn = document.getElementById("submit-tau");
+          submitBtn.addEventListener("click", () => {
+            const date = document.getElementById("date").value;
+            const week = document.getElementById("week").value;
+            const uap = document.getElementById("uap").value;
+            const resultat = document.getElementById("resultat").value;
+            const commentaire = document.getElementById("commentaire").value;
+            const formError = document.getElementById("form-error");
 
-function updateCharts(submissions) {
-    const chartConfigs = [
-        {
-            id: 'chart-audit-5s',
-            label: 'Audit 5S Result (%)',
-            data: submissions
-                .filter(s => s.section === 'Audit 5S')
-                .map(s => ({
-                    x: s['audit-5s-week'] || s.timestamp,
-                    y: parseFloat(s['audit-5s-result']) || 0,
-                    submission: s
-                })),
-            key: 'audit-5s-result'
-        },
-        {
-            id: 'chart-audit-gemba',
-            label: 'Audit Gemba Result (%)',
-            data: submissions
-                .filter(s => s.section === 'Audit Gemba')
-                .map(s => ({
-                    x: s['audit-gemba-week'] || s.timestamp,
-                    y: parseFloat(s['audit-gemba-result']) || 0,
-                    submission: s
-                })),
-            key: 'audit-gemba-result'
-        },
-        {
-            id: 'chart-emplissage-tableau',
-            label: 'Emplissage Tableau Pourcentage (%)',
-            data: submissions
-                .filter(s => s.section === 'Emplissage Tableau de Bord')
-                .map(s => ({
-                    x: s['emplissage-week'] || s.timestamp,
-                    y: parseFloat(s['emplissage-percentage']) || 0,
-                    submission: s
-                })),
-            key: 'emplissage-percentage'
-        },
-        {
-            id: 'chart-taux-absenteisme',
-            label: 'Taux Absenteisme Status (%)',
-            data: submissions
-                .filter(s => s.section === 'Taux Absenteisme')
-                .map(s => ({
-                    x: s['absenteisme-week'] || s.timestamp,
-                    y: parseInt(s['absenteisme-status']) === 1 ? 100 : 0,
-                    submission: s
-                })),
-            key: 'absenteisme-status'
-        },
-        {
-            id: 'chart-taux-realisation-gemba',
-            label: 'Taux Realisation Gemba (%)',
-            data: submissions
-                .filter(s => s.section === 'Taux Realisation Gemba')
-                .map(s => ({
-                    x: s['realisation-gemba-week'] || s.timestamp,
-                    y: Math.min((parseFloat(s['realisation-gemba-realised']) / parseFloat(s['realisation-gemba-audits']) * 100) || 0, 100),
-                    submission: s
-                })),
-            key: 'realisation-gemba'
-        },
-        {
-            id: 'chart-taux-realisation-5s',
-            label: 'Taux Realisation 5S (%)',
-            data: submissions
-                .filter(s => s.section === 'Taux Realisation 5S')
-                .map(s => ({
-                    x: s['realisation-5s-week'] || s.timestamp,
-                    y: Math.min((parseFloat(s['realisation-5s-realised']) / parseFloat(s['realisation-5s-audits']) * 100) || 0, 100),
-                    submission: s
-                })),
-            key: 'realisation-5s'
-        }
-    ];
+            const missingFields = [];
+            if (!date) missingFields.push("Date");
+            if (!week) missingFields.push("Week");
+            if (!uap) missingFields.push("UAP");
+            if (!resultat) missingFields.push("Resultat");
 
-    chartConfigs.forEach(config => {
-        const ctx = document.getElementById(config.id).getContext('2d');
-        if (chartInstances[config.id]) {
-            chartInstances[config.id].destroy();
-        }
+            if (missingFields.length) {
+              showError(formError, `Please fill: ${missingFields.join(", ")}`);
+              return;
+            }
 
-        const backgroundColors = config.data.map(data => getBarColor(data.y));
+            if (week < 1 || week > 52) {
+              showError(formError, "Week must be between 1 and 52");
+              return;
+            }
+            if (resultat < 0 || resultat > 100) {
+              showError(formError, "Resultat must be between 0 and 100");
+              return;
+            }
 
-        chartInstances[config.id] = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: config.data.map(d => d.x),
-                datasets: [{
-                    label: config.label,
-                    data: config.data.map(d => d.y),
-                    backgroundColor: backgroundColors,
-                    borderColor: backgroundColors.map(color => color.replace('0.8', '1')),
-                    borderWidth: 1,
-                    customData: config.data
-                }]
-            },
-            options: {
-                scales: {
-                    x: {
-                        title: { display: true, text: 'Week or Timestamp' }
-                    },
-                    y: {
+            const dataRef = ref(database, `auditData/${section}`);
+            push(dataRef, {
+              date,
+              week: parseInt(week),
+              uap,
+              resultat: parseFloat(resultat),
+              commentaire
+            }).then(() => {
+              showSuccess(formError, "Data submitted successfully!");
+              loadFirebaseData(() => renderSection(section));
+            }).catch((error) => {
+              console.error(`Error submitting ${section} data:`, error);
+              showError(formError, "Failed to submit data");
+            });
+          });
+        } else if (section === "Taux Absenteisme") {
+          mainContent.innerHTML = `
+            <h1 class="text-4xl font-extrabold text-gray-800">${section}</h1>
+            <p class="mt-6 text-lg text-gray-600">Enter attendance data below.</p>
+            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+              <div class="mb-4">
+                <label for="date" class="block text-sm font-semibold text-gray-700">Date</label>
+                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+              </div>
+              <div class="mb-4">
+                <label for="week" class="block text-sm font-semibold text-gray-700">Week</label>
+                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)">
+              </div>
+              <div class="mb-4">
+                <label for="nom" class="block text-sm font-semibold text-gray-700">Nom</label>
+                <select id="nom" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                  <option value="">Select an employee</option>
+                  ${employees.map((nom) => `<option value="${nom}">${nom}</option>`).join("")}
+                </select>
+              </div>
+              <div class="mb-4">
+                <label for="statut" class="block text-sm font-semibold text-gray-700">Statut</label>
+                <select id="statut" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                  <option value="">Select status</option>
+                  <option value="Présent">Présent</option>
+                  <option value="Absent">Absent</option>
+                </select>
+              </div>
+              <div class="mb-4">
+                <label for="commentaire" class="block text-sm font-semibold text-gray-700">Commentaire (Optional)</label>
+                <input type="text" id="commentaire" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter comment (optional)">
+              </div>
+              <button id="submit-absenteisme" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
+              <p id="form-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
+            </div>
+          `;
+
+          const submitBtn = document.getElementById("submit-absenteisme");
+          submitBtn.addEventListener("click", () => {
+            const date = document.getElementById("date").value;
+            const week = document.getElementById("week").value;
+            const nom = document.getElementById("nom").value;
+            const statut = document.getElementById("statut").value;
+            const commentaire = document.getElementById("commentaire").value;
+            const formError = document.getElementById("form-error");
+
+            const missingFields = [];
+            if (!date) missingFields.push("Date");
+            if (!week) missingFields.push("Week");
+            if (!nom) missingFields.push("Nom");
+            if (!statut) missingFields.push("Statut");
+
+            if (missingFields.length) {
+              showError(formError, `Please fill: ${missingFields.join(", ")}`);
+              return;
+            }
+
+            if (week < 1 || week > 52) {
+              showError(formError, "Week must be between 1 and 52");
+              return;
+            }
+
+            const percentage = statut === "Présent" ? 100 : 0;
+            const dataRef = ref(database, `auditData/${section}`);
+            push(dataRef, {
+              date,
+              week: parseInt(week),
+              nom,
+              statut,
+              percentage,
+              commentaire
+            }).then(() => {
+              showSuccess(formError, "Data submitted successfully!");
+              loadFirebaseData(() => renderSection(section));
+            }).catch((error) => {
+              console.error(`Error submitting ${section} data:`, error);
+              showError(formError, "Failed to submit data");
+            });
+          });
+        } else if (section === "Taux Realisation 5S" || section === "Taux Realisation Gemba") {
+          mainContent.innerHTML = `
+            <h1 class="text-4xl font-extrabold text-gray-800">${section}</h1>
+            <p class="mt-6 text-lg text-gray-600">Enter audit realisation data below.</p>
+            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+              <div class="mb-4">
+                <label for="date" class="block text-sm font-semibold text-gray-700">Date</label>
+                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+              </div>
+              <div class="mb-4">
+                <label for="week" class="block text-sm font-semibold text-gray-700">Week</label>
+                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)">
+              </div>
+              <div class="mb-4">
+                <label for="audits-realises" class="block text-sm font-semibold text-gray-700">Nombre Audit Réalisé</label>
+                <input type="number" id="audits-realises" min="0" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter number of audits realised">
+              </div>
+              <div class="mb-4">
+                <label for="audits-planifies" class="block text-sm font-semibold text-gray-700">Nombre Audit Planifié</label>
+                <input type="number" id="audits-planifies" min="0" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter number of audits planned">
+              </div>
+              <button id="submit-realisation" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
+              <p id="form-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
+            </div>
+          `;
+
+          const submitBtn = document.getElementById("submit-realisation");
+          submitBtn.addEventListener("click", () => {
+            const date = document.getElementById("date").value;
+            const week = document.getElementById("week").value;
+            const auditsRealises = document.getElementById("audits-realises").value;
+            const auditsPlanifies = document.getElementById("audits-planifies").value;
+            const formError = document.getElementById("form-error");
+
+            const missingFields = [];
+            if (!date) missingFields.push("Date");
+            if (!week) missingFields.push("Week");
+            if (!auditsRealises) missingFields.push("Audits Réalisés");
+            if (!auditsPlanifies) missingFields.push("Audits Planifiés");
+
+            if (missingFields.length) {
+              showError(formError, `Please fill: ${missingFields.join(", ")}`);
+              return;
+            }
+
+            if (week < 1 || week > 52) {
+              showError(formError, "Week must be between 1 and 52");
+              return;
+            }
+            if (auditsRealises < 0 || auditsPlanifies < 0) {
+              showError(formError, "Audits must be non-negative");
+              return;
+            }
+
+            const dataRef = ref(database, `auditData/${section}`);
+            push(dataRef, {
+              date,
+              week: parseInt(week),
+              auditsRealises: parseInt(auditsRealises),
+              auditsPlanifies: parseInt(auditsPlanifies)
+            }).then(() => {
+              showSuccess(formError, "Data submitted successfully!");
+              loadFirebaseData(() => renderSection(section));
+            }).catch((error) => {
+              console.error(`Error submitting ${section} data:`, error);
+              showError(formError, "Failed to submit data");
+            });
+          });
+        } else if (section === "Top Action 5S" || section === "Top Action Gemba") {
+          mainContent.innerHTML = `
+            <h1 class="text-4xl font-extrabold text-gray-800">${section}</h1>
+            <p class="mt-6 text-lg text-gray-600">Enter action data below (up to 5 actions).</p>
+            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+              <div class="mb-4">
+                <label for="date" class="block text-sm font-semibold text-gray-700">Date</label>
+                <input type="date" id="date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+              </div>
+              <div class="mb-4">
+                <label for="week" class="block text-sm font-semibold text-gray-700">Week</label>
+                <input type="number" id="week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week number (1-52)">
+              </div>
+              <div class="mb-4">
+                <label for="ligne" class="block text-sm font-semibold text-gray-700">Ligne</label>
+                <select id="ligne" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                  <option value="">Select a ligne</option>
+                  ${lignes.map((ligne) => `<option value="${ligne}">${ligne}</option>`).join("")}
+                </select>
+              </div>
+              <div class="mb-4">
+                <label for="action" class="block text-sm font-semibold text-gray-700">Action (Optional)</label>
+                <input type="text" id="action" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter action (optional)">
+              </div>
+              <button id="submit-action" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Submit</button>
+              <p id="form-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
+            </div>
+          `;
+
+          const submitBtn = document.getElementById("submit-action");
+          submitBtn.addEventListener("click", () => {
+            const date = document.getElementById("date").value;
+            const week = document.getElementById("week").value;
+            const ligne = document.getElementById("ligne").value;
+            const action = document.getElementById("action").value;
+            const formError = document.getElementById("form-error");
+
+            const missingFields = [];
+            if (!date) missingFields.push("Date");
+            if (!week) missingFields.push("Week");
+            if (!ligne) missingFields.push("Ligne");
+
+            if (missingFields.length) {
+              showError(formError, `Please fill: ${missingFields.join(", ")}`);
+              return;
+            }
+
+            if (week < 1 || week > 52) {
+              showError(formError, "Week must be between 1 and 52");
+              return;
+            }
+
+            const existingActions = auditData[section].filter(
+              (entry) => entry.week === parseInt(week) && entry.ligne === ligne && entry.action
+            );
+            if (existingActions.length >= 5 && action) {
+              showError(formError, "Maximum 5 actions per ligne and week reached");
+              return;
+            }
+
+            const dataRef = ref(database, `auditData/${section}`);
+            push(dataRef, {
+              date,
+              week: parseInt(week),
+              ligne,
+              action: action || ""
+            }).then(() => {
+              showSuccess(formError, "Data submitted successfully!");
+              loadFirebaseData(() => renderSection(section));
+            }).catch((error) => {
+              console.error(`Error submitting ${section} data:`, error);
+              showError(formError, "Failed to submit data");
+            });
+          });
+        } else if (section === "Dashboard") {
+          mainContent.innerHTML = `
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Filter Data</h2>
+            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+                <div>
+                  <label for="filter-start-date" class="block text-sm font-semibold text-gray-700">Start Date</label>
+                  <input type="date" id="filter-start-date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                </div>
+                <div>
+                  <label for="filter-end-date" class="block text-sm font-semibold text-gray-700">End Date</label>
+                  <input type="date" id="filter-end-date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                </div>
+                <div>
+                  <label for="filter-week" class="block text-sm font-semibold text-gray-700">Week</label>
+                  <input type="number" id="filter-week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week (1-52)">
+                </div>
+                <div>
+                  <label for="filter-uap" class="block text-sm font-semibold text-gray-700">UAP/Nom</label>
+                  <select id="filter-uap" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                    <option value="">All UAPs/Employees</option>
+                    ${uaps.map((uap) => `<option value="${uap}">${uap}</option>`).join("")}
+                    ${employees.map((nom) => `<option value="${nom}">${nom}</option>`).join("")}
+                  </select>
+                </div>
+                <div>
+                  <label for="filter-ligne" class="block text-sm font-semibold text-gray-700">Ligne</label>
+                  <select id="filter-ligne" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                    <option value="">All Lignes</option>
+                    ${lignes.map((ligne) => `<option value="${ligne}">${ligne}</option>`).join("")}
+                  </select>
+                </div>
+              </div>
+              <button id="apply-filter" class="w-full md:w-auto bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Apply Filter</button>
+              <p id="filter-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
+            </div>
+            <div class="mt-8">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">Audit 5S</h2>
+              <canvas id="audit-5s-chart" class="mt-4"></canvas>
+            </div>
+            <div class="mt-8">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">Audit Gemba</h2>
+              <canvas id="audit-gemba-chart" class="mt-4"></canvas>
+            </div>
+            <div class="mt-8">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">TAU Emplissage</h2>
+              <canvas id="tau-emplissage-chart" class="mt-4"></canvas>
+            </div>
+            <div class="mt-8">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">Taux Absenteisme</h2>
+              <canvas id="taux-absenteisme-chart" class="mt-4"></canvas>
+            </div>
+            <div class="mt-8">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">Taux Realisation 5S</h2>
+              <canvas id="taux-realisation-5s-chart" class="mt-4"></canvas>
+            </div>
+            <div class="mt-8">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">Taux Realisation Gemba</h2>
+              <canvas id="taux-realisation-gemba-chart" class="mt-4"></canvas>
+            </div>
+            <div class="mt-8">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">Top Action 5S</h2>
+              <div class="bg-white p-6 rounded-lg shadow-lg overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-gray-200">
+                      <th class="p-3 text-sm font-semibold text-gray-700">Week</th>
+                      <th class="p-3 text-sm font-semibold text-gray-700">Ligne</th>
+                      <th class="p-3 text-sm font-semibold text-gray-700">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="top-action-5s-table"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="mt-8">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">Top Action Gemba</h2>
+              <div class="bg-white p-6 rounded-lg shadow-lg overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-gray-200">
+                      <th class="p-3 text-sm font-semibold text-gray-700">Week</th>
+                      <th class="p-3 text-sm font-semibold text-gray-700">Ligne</th>
+                      <th class="p-3 text-sm font-semibold text-gray-700">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="top-action-gemba-table"></tbody>
+                </table>
+              </div>
+            </div>
+          `;
+
+          function renderChartsAndTables() {
+            console.log("Rendering charts and tables for Dashboard");
+            const startDate = document.getElementById("filter-start-date").value;
+            const endDate = document.getElementById("filter-end-date").value;
+            const week = document.getElementById("filter-week").value;
+            const uap = document.getElementById("filter-uap").value;
+            const ligne = document.getElementById("filter-ligne").value;
+            const filterError = document.getElementById("filter-error");
+
+            if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+              showError(filterError, "Start date must be before end date");
+              return;
+            }
+            if (week && (week < 1 || week > 52)) {
+              showError(filterError, "Week must be between 1 and 52");
+              return;
+            }
+
+            const filterData = (sectionData, section) => {
+              return sectionData.filter((entry) => {
+                let pass = true;
+                if (startDate) pass = pass && new Date(entry.date) >= new Date(startDate);
+                if (endDate) pass = pass && new Date(entry.date) <= new Date(endDate);
+                if (week) pass = pass && entry.week === parseInt(week);
+                if (uap) {
+                  if (section === "Audit 5S" || section === "Audit Gemba" || section === "TAU Emplissage") {
+                    pass = pass && entry.uap === uap;
+                  } else if (section === "Taux Absenteisme") {
+                    pass = pass && entry.nom === uap;
+                  }
+                }
+                if (ligne && (section === "Audit 5S" || section === "Audit Gemba" || section === "Top Action 5S" || section === "Top Action Gemba")) {
+                  pass = pass && entry.ligne === ligne;
+                }
+                return pass;
+              });
+            };
+
+            function renderAuditChart(section, canvasId) {
+              const filteredData = filterData(auditData[section], section);
+              const weeks = [...new Set(filteredData.map((d) => d.week))].sort((a, b) => a - b);
+              const datasets = lignes.map((ligne, index) => {
+                const data = weeks.map((week) => {
+                  const entries = filteredData
+                    .filter((d) => d.ligne === ligne && d.week === week)
+                    .sort((a, b) => new Date(b.date) - new Date(a.date));
+                  return entries.length ? entries[0].score : 0;
+                });
+                return {
+                  label: ligne,
+                  data,
+                  backgroundColor: colors[index % colors.length] + "80",
+                  borderColor: colors[index % colors.length],
+                  borderWidth: 1,
+                };
+              }).filter((ds) => ds.data.some((d) => d > 0));
+
+              const chartData = {
+                labels: weeks.map((w) => `Week ${w}`),
+                datasets,
+              };
+
+              try {
+                const ctx = document.getElementById(canvasId).getContext("2d");
+                new Chart(ctx, {
+                  type: "bar",
+                  data: chartData,
+                  options: {
+                    responsive: true,
+                    scales: {
+                      y: {
                         beginAtZero: true,
                         max: 100,
-                        title: { display: true, text: 'Percentage (%)' }
+                        title: { display: true, text: "Score (%)" },
+                      },
+                      x: { title: { display: true, text: "Week" } },
+                    },
+                    plugins: {
+                      legend: { display: datasets.length <= 10 }
                     }
-                },
-                plugins: {
-                    legend: { display: true },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const data = context.dataset.customData[context.dataIndex].submission;
-                                const lines = [`${context.dataset.label}: ${context.raw.toFixed(2)}%`];
-                                
-                                // Include all non-empty fields from the submission
-                                Object.entries(data).forEach(([key, value]) => {
-                                    if (value && value !== '' && key !== 'userId' && key !== 'id') {
-                                        // Format key for readability (e.g., 'audit-5s-result' -> 'Result')
-                                        const formattedKey = key.replace(/^(audit-5s-|audit-gemba-|emplissage-|absenteisme-|realisation-gemba-|realisation-5s-|top-gemba-|top-5s-)/, '')
-                                            .replace(/-/g, ' ')
-                                            .replace(/\b\w/g, c => c.toUpperCase());
-                                        lines.push(`${formattedKey}: ${value}`);
-                                    }
-                                });
-                                
-                                return lines;
-                            }
-                        }
-                    }
-                }
+                  },
+                });
+                console.log(`Rendered chart for ${section}`);
+              } catch (error) {
+                console.error(`Error rendering chart for ${section}:`, error);
+              }
             }
-        });
-    });
-}
 
-function updateActionTables(submissions) {
-    const gembaTbody = document.getElementById('top-action-gemba-table');
-    const fiveSTbody = document.getElementById('top-action-5s-table');
-    gembaTbody.innerHTML = '';
-    fiveSTbody.innerHTML = '';
+            function renderTauChart() {
+              const filteredData = filterData(auditData["TAU Emplissage"], "TAU Emplissage");
+              const weeks = [...new Set(filteredData.map((d) => d.week))].sort((a, b) => a - b);
+              const datasets = uaps.map((uap, index) => {
+                const data = weeks.map((week) => {
+                  const entries = filteredData.filter((d) => d.uap === uap && d.week === week);
+                  const avg = entries.length
+                    ? entries.reduce((sum, d) => sum + d.resultat, 0) / entries.length
+                    : 0;
+                  return avg;
+                });
+                return {
+                  label: uap,
+                  data,
+                  backgroundColor: colors[index % colors.length] + "80",
+                  borderColor: colors[index % colors.length],
+                  borderWidth: 1,
+                };
+              }).filter((ds) => ds.data.some((d) => d > 0));
 
-    const gembaSubmissions = submissions.filter(s => s.section === 'Top Action Gemba');
-    const fiveSSubmissions = submissions.filter(s => s.section === 'Top Action 5S');
+              const chartData = {
+                labels: weeks.map((w) => `Week ${w}`),
+                datasets,
+              };
 
-    gembaSubmissions.forEach(submission => {
-        const row = document.createElement('tr');
-        row.className = 'odd:bg-gray-50 hover:bg-gray-100';
-        row.innerHTML = `
-            <td class="p-3 text-gray-800">${new Date(submission.timestamp).toLocaleString()}</td>
-            <td class="p-3 text-gray-800">${submission['top-gemba-line'] || '-'}</td>
-            <td class="p-3 text-gray-800">${submission['top-gemba-action1'] || '-'}</td>
-            <td class="p-3 text-gray-800">${submission['top-gemba-action2'] || '-'}</td>
-            <td class="p-3 text-gray-800">${submission['top-gemba-action3'] || '-'}</td>
-            <td class="p-3 text-gray-800">${submission['top-gemba-action4'] || '-'}</td>
-            <td class="p-3 text-gray-800">${submission['top-gemba-action5'] || '-'}</td>
-        `;
-        gembaTbody.appendChild(row);
-    });
+              try {
+                const ctx = document.getElementById("tau-emplissage-chart").getContext("2d");
+                new Chart(ctx, {
+                  type: "bar",
+                  data: chartData,
+                  options: {
+                    responsive: true,
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: "Average Resultat (%)" },
+                      },
+                      x: { title: { display: true, text: "Week" } },
+                    },
+                    plugins: {
+                      legend: { display: true }
+                    }
+                  },
+                });
+                console.log("Rendered TAU Emplissage chart");
+              } catch (error) {
+                console.error("Error rendering TAU Emplissage chart:", error);
+              }
+            }
 
-    fiveSSubmissions.forEach(submission => {
-        const row = document.createElement('tr');
-        row.className = 'odd:bg-gray-50 hover:bg-gray-100';
-        row.innerHTML = `
-            <td class="p-3 text-gray-800">${new Date(submission.timestamp).toLocaleString()}</td>
-            <td class="p-3 text-gray-800">${submission['top-5s-line'] || '-'}</td>
-            <td class="p-3 text-gray-800">${submission['top-5s-action1'] || '-'}</td>
-            <td class="p-3 text-gray-800">${submission['top-5s-action2'] || '-'}</td>
-            <td class="p-3 text-gray-800">${submission['top-5s-action3'] || '-'}</td>
-            <td class="p-3 text-gray-800">${submission['top-5s-action4'] || '-'}</td>
-            <td class="p-3 text-gray-800">${submission['top-5s-action5'] || '-'}</td>
-        `;
-        fiveSTbody.appendChild(row);
-    });
-}
+            function renderAbsenteismeChart() {
+              const filteredData = filterData(auditData["Taux Absenteisme"], "Taux Absenteisme");
+              const weeks = [...new Set(filteredData.map((d) => d.week))].sort((a, b) => a - b);
+              const datasets = employees.map((nom, index) => {
+                const data = weeks.map((week) => {
+                  const entries = filteredData.filter((d) => d.nom === nom && d.week === week);
+                  const avg = entries.length
+                    ? entries.reduce((sum, d) => sum + d.percentage, 0) / entries.length
+                    : 0;
+                  return avg;
+                });
+                return {
+                  label: nom,
+                  data,
+                  backgroundColor: colors[index % colors.length] + "80",
+                  borderColor: colors[index % colors.length],
+                  borderWidth: 1,
+                };
+              }).filter((ds) => ds.data.some((d) => d > 0));
 
-window.updateArchiveTable = async function() {
-    const tbody = document.getElementById('archive-table-body');
-    tbody.innerHTML = '';
-    try {
-        const user = auth.currentUser;
-        if (!user) {
-            alert('Please log in to view archive.');
-            return;
+              const chartData = {
+                labels: weeks.map((w) => `Week ${w}`),
+                datasets,
+              };
+
+              try {
+                const ctx = document.getElementById("taux-absenteisme-chart").getContext("2d");
+                new Chart(ctx, {
+                  type: "bar",
+                  data: chartData,
+                  options: {
+                    responsive: true,
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: "Average Attendance (%)" },
+                      },
+                      x: { title: { display: true, text: "Week" } },
+                    },
+                    plugins: {
+                      legend: { display: datasets.length <= 10 }
+                    }
+                  },
+                });
+                console.log("Rendered Taux Absenteisme chart");
+              } catch (error) {
+                console.error("Error rendering Taux Absenteisme chart:", error);
+              }
+            }
+
+            function renderRealisationChart(section, canvasId) {
+              const filteredData = filterData(auditData[section], section);
+              const weeks = [...new Set(filteredData.map((d) => d.week))].sort((a, b) => a - b);
+              const datasets = [
+                {
+                  label: "Audits Réalisés",
+                  data: weeks.map((week) => {
+                    const entries = filteredData.filter((d) => d.week === week);
+                    return entries.length
+                      ? entries.reduce((sum, d) => sum + d.auditsRealises, 0)
+                      : 0;
+                  }),
+                  backgroundColor: colors[0] + "80",
+                  borderColor: colors[0],
+                  borderWidth: 1,
+                },
+                {
+                  label: "Audits Planifiés (Remaining)",
+                  data: weeks.map((week) => {
+                    const entries = filteredData.filter((d) => d.week === week);
+                    const realises = entries.length
+                      ? entries.reduce((sum, d) => sum + d.auditsRealises, 0)
+                      : 0;
+                    const planifies = entries.length
+                      ? entries.reduce((sum, d) => sum + d.auditsPlanifies, 0)
+                      : 0;
+                    return planifies - realises;
+                  }),
+                  backgroundColor: colors[1] + "80",
+                  borderColor: colors[1],
+                  borderWidth: 1,
+                },
+              ].filter((ds) => ds.data.some((d) => d > 0));
+
+              const chartData = {
+                labels: weeks.map((w) => `Week ${w}`),
+                datasets,
+              };
+
+              try {
+                const ctx = document.getElementById(canvasId).getContext("2d");
+                new Chart(ctx, {
+                  type: "bar",
+                  data: chartData,
+                  options: {
+                    responsive: true,
+                    scales: {
+                      y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: { display: true, text: "Number of Audits" },
+                      },
+                      x: {
+                        stacked: true,
+                        title: { display: true, text: "Week" },
+                      },
+                    },
+                    plugins: {
+                      legend: { display: true }
+                    }
+                  },
+                });
+                console.log(`Rendered realisation chart for ${section}`);
+              } catch (error) {
+                console.error(`Error rendering realisation chart for ${section}:`, error);
+              }
+            }
+
+            function renderActionTable(section, tableId) {
+              const filteredData = filterData(auditData[section], section);
+              const tableBody = document.getElementById(tableId);
+              tableBody.innerHTML = filteredData
+                .filter((entry) => entry.action)
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .map(
+                  (entry, index) => `
+                    <tr class="${index % 2 === 0 ? "bg-gray-50" : "bg-white"}">
+                      <td class="p-3 text-sm text-gray-600">${entry.week}</td>
+                      <td class="p-3 text-sm text-gray-600">${entry.ligne}</td>
+                      <td class="p-3 text-sm text-gray-600">${entry.action}</td>
+                    </tr>
+                  `
+                )
+                .join("");
+              console.log(`Rendered table for ${section}`);
+            }
+
+            const canvases = [
+              "audit-5s-chart",
+              "audit-gemba-chart",
+              "tau-emplissage-chart",
+              "taux-absenteisme-chart",
+              "taux-realisation-5s-chart",
+              "taux-realisation-gemba-chart"
+            ];
+            canvases.forEach((id) => {
+              const canvas = document.getElementById(id);
+              const ctx = canvas.getContext("2d");
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+            });
+
+            try {
+              renderAuditChart("Audit 5S", "audit-5s-chart");
+              renderAuditChart("Audit Gemba", "audit-gemba-chart");
+              renderTauChart();
+              renderAbsenteismeChart();
+              renderRealisationChart("Taux Realisation 5S", "taux-realisation-5s-chart");
+              renderRealisationChart("Taux Realisation Gemba", "taux-realisation-gemba-chart");
+              renderActionTable("Top Action 5S", "top-action-5s-table");
+              renderActionTable("Top Action Gemba", "top-action-gemba-table");
+              filterError.classList.add("hidden");
+            } catch (error) {
+              console.error("Error rendering Dashboard charts/tables:", error);
+              showError(filterError, "Failed to render dashboard data");
+            }
+          }
+
+          loadFirebaseData(renderChartsAndTables);
+          document.getElementById("apply-filter").addEventListener("click", () => {
+            console.log("Apply filter clicked");
+            loadFirebaseData(renderChartsAndTables);
+          });
+        } else if (section === "Archive") {
+          mainContent.innerHTML = `
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Archive Data</h2>
+            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+                <div>
+                  <label for="filter-section" class="block text-sm font-semibold text-gray-700">Section</label>
+                  <select id="filter-section" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                    <option value="">All Sections</option>
+                    <option value="Audit 5S">Audit 5S</option>
+                    <option value="Audit Gemba">Audit Gemba</option>
+                    <option value="TAU Emplissage">TAU Emplissage</option>
+                    <option value="Taux Absenteisme">Taux Absenteisme</option>
+                    <option value="Taux Realisation 5S">Taux Realisation 5S</option>
+                    <option value="Taux Realisation Gemba">Taux Realisation Gemba</option>
+                    <option value="Top Action 5S">Top Action 5S</option>
+                    <option value="Top Action Gemba">Top Action Gemba</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="filter-start-date" class="block text-sm font-semibold text-gray-700">Start Date</label>
+                  <input type="date" id="filter-start-date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                </div>
+                <div>
+                  <label for="filter-end-date" class="block text-sm font-semibold text-gray-700">End Date</label>
+                  <input type="date" id="filter-end-date" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                </div>
+                <div>
+                  <label for="filter-week" class="block text-sm font-semibold text-gray-700">Week</label>
+                  <input type="number" id="filter-week" min="1" max="52" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter week (1-52)">
+                </div>
+                <div>
+                  <label for="filter-uap" class="block text-sm font-semibold text-gray-700">UAP/Nom</label>
+                  <select id="filter-uap" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                    <option value="">All UAPs/Employees</option>
+                    ${uaps.map((uap) => `<option value="${uap}">${uap}</option>`).join("")}
+                    ${employees.map((nom) => `<option value="${nom}">${nom}</option>`).join("")}
+                  </select>
+                </div>
+                <div>
+                  <label for="filter-ligne" class="block text-sm font-semibold text-gray-700">Ligne</label>
+                  <select id="filter-ligne" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                    <option value="">All Lignes</option>
+                    ${lignes.map((ligne) => `<option value="${ligne}">${ligne}</option>`).join("")}
+                  </select>
+                </div>
+              </div>
+              <button id="apply-archive-filter" class="w-full md:w-auto bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Apply Filter</button>
+              <button id="export-excel" class="w-full md:w-auto bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 mt-4 md:mt-0 md:ml-4">Export to Excel</button>
+              <p id="filter-error" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
+            </div>
+            <div class="mt-8">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">Filtered Archive Data</h2>
+              <div class="bg-white p-6 rounded-lg shadow-lg overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-gray-200">
+                      <th class="p-3 text-sm font-semibold text-gray-700">Section</th>
+                      <th class="p-3 text-sm font-semibold text-gray-700">Date</th>
+                      <th class="p-3 text-sm font-semibold text-gray-700">Week</th>
+                      <th class="p-3 text-sm font-semibold text-gray-700">UAP/Nom</th>
+                      <th class="p-3 text-sm font-semibold text-gray-700">Ligne</th>
+                      <th class="p-3 text-sm font-semibold text-gray-700">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="archive-table"></tbody>
+                </table>
+              </div>
+            </div>
+          `;
+
+          function renderArchiveTable() {
+            console.log("Rendering Archive table");
+            const sectionFilter = document.getElementById("filter-section").value;
+            const startDate = document.getElementById("filter-start-date").value;
+            const endDate = document.getElementById("filter-end-date").value;
+            const week = document.getElementById("filter-week").value;
+            const uap = document.getElementById("filter-uap").value;
+            const ligne = document.getElementById("filter-ligne").value;
+            const filterError = document.getElementById("filter-error");
+
+            if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+              showError(filterError, "Start date must be before end date");
+              return;
+            }
+            if (week && (week < 1 || week > 52)) {
+              showError(filterError, "Week must be between 1 and 52");
+              return;
+            }
+
+            let allData = [];
+            Object.keys(auditData).forEach((section) => {
+              const filteredData = auditData[section].filter((entry) => {
+                let pass = true;
+                if (sectionFilter && sectionFilter !== section) pass = false;
+                if (startDate) pass = pass && new Date(entry.date) >= new Date(startDate);
+                if (endDate) pass = pass && new Date(entry.date) <= new Date(endDate);
+                if (week) pass = pass && entry.week === parseInt(week);
+                if (uap) {
+                  if (section === "Audit 5S" || section === "Audit Gemba" || section === "TAU Emplissage") {
+                    pass = pass && entry.uap === uap;
+                  } else if (section === "Taux Absenteisme") {
+                    pass = pass && entry.nom === uap;
+                  }
+                }
+                if (ligne && (section === "Audit 5S" || section === "Audit Gemba" || section === "Top Action 5S" || section === "Top Action Gemba")) {
+                  pass = pass && entry.ligne === ligne;
+                }
+                return pass;
+              });
+              filteredData.forEach((entry) => {
+                let details = "";
+                if (section === "Audit 5S" || section === "Audit Gemba") {
+                  details = `Score: ${entry.score}%`;
+                } else if (section === "TAU Emplissage") {
+                  details = `Resultat: ${entry.resultat}%, Commentaire: ${entry.commentaire || "None"}`;
+                } else if (section === "Taux Absenteisme") {
+                  details = `Statut: ${entry.statut}, Commentaire: ${entry.commentaire || "None"}`;
+                } else if (section === "Taux Realisation 5S" || section === "Taux Realisation Gemba") {
+                  details = `Audits Réalisés: ${entry.auditsRealises}, Audits Planifiés: ${entry.auditsPlanifies}`;
+                } else if (section === "Top Action 5S" || section === "Top Action Gemba") {
+                  details = `Action: ${entry.action || "None"}`;
+                }
+                allData.push({
+                  section,
+                  date: entry.date,
+                  week: entry.week,
+                  uap: entry.uap || entry.nom || "N/A",
+                  ligne: entry.ligne || "N/A",
+                  details
+                });
+              });
+            });
+
+            const tableBody = document.getElementById("archive-table");
+            tableBody.innerHTML = allData
+              .sort((a, b) => new Date(b.date) - new Date(a.date))
+              .map(
+                (entry, index) => `
+                  <tr class="${index % 2 === 0 ? "bg-gray-50" : "bg-white"}">
+                    <td class="p-3 text-sm text-gray-600">${entry.section}</td>
+                    <td class="p-3 text-sm text-gray-600">${entry.date}</td>
+                    <td class="p-3 text-sm text-gray-600">${entry.week}</td>
+                    <td class="p-3 text-sm text-gray-600">${entry.uap}</td>
+                    <td class="p-3 text-sm text-gray-600">${entry.ligne}</td>
+                    <td class="p-3 text-sm text-gray-600">${entry.details}</td>
+                  </tr>
+                `
+              )
+              .join("");
+
+            document.getElementById("export-excel").onclick = () => {
+              try {
+                const worksheet = XLSX.utils.json_to_sheet(allData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Archive Data");
+                XLSX.write_file(workbook, "archive_data.xlsx");
+                console.log("Exported archive data to Excel");
+              } catch (error) {
+                console.error("Error exporting to Excel:", error);
+                showError(filterError, "Failed to export data");
+              }
+            };
+
+            filterError.classList.add("hidden");
+            console.log("Archive table rendered");
+          }
+
+          loadFirebaseData(renderArchiveTable);
+          document.getElementById("apply-archive-filter").addEventListener("click", () => {
+            console.log("Apply archive filter clicked");
+            loadFirebaseData(renderArchiveTable);
+          });
         }
-        const q = query(collection(db, 'submissions'), where('userId', '==', user.uid));
-        const snapshot = await getDocs(q);
-        snapshot.forEach(doc => {
-            const submission = { id: doc.id, ...doc.data() };
-            const row = document.createElement('tr');
-            row.className = 'odd:bg-gray-50 hover:bg-gray-100';
-            const keyData = Object.entries(submission)
-                .filter(([key, value]) => key !== 'id' && key !== 'userId' && key !== 'section' && key !== 'timestamp' && value && value !== '')
-                .map(([key, value]) => `${key.replace(/^(audit-5s-|audit-gemba-|emplissage-|absenteisme-|realisation-gemba-|realisation-5s-|top-gemba-|top-5s-)/, '')}: ${value}`)
-                .join(', ');
-            row.innerHTML = `
-                <td class="p-3 text-gray-800">${submission.section}</td>
-                <td class="p-3 text-gray-800">${new Date(submission.timestamp).toLocaleString()}</td>
-                <td class="p-3 text-gray-800">${keyData || '-'}</td>
-                <td class="p-3 text-gray-800">${submission['audit-5s-uap'] || submission['audit-gemba-uap'] || submission['emplissage-uap'] || '-'}</td>
-                <td class="p-3 text-gray-800">${submission['audit-5s-week'] || submission['audit-gemba-week'] || submission['absenteisme-week'] || submission['realisation-gemba-week'] || submission['realisation-5s-week'] || submission['emplissage-week'] || '-'}</td>
-                <td class="p-3 text-gray-800">${submission['audit-5s-date'] || submission['audit-gemba-date'] || submission['absenteisme-date'] || submission['emplissage-date'] || '-'}</td>
-                <td class="p-3 text-gray-800">${submission['audit-5s-line'] || submission['audit-gemba-line'] || submission['emplissage-line'] || submission['top-gemba-line'] || submission['top-5s-line'] || '-'}</td>
-                <td class="p-3"><button onclick="showDetails('${submission.id}')" class="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Details</button></td>
-            `;
-            tbody.appendChild(row);
-        });
-    } catch (err) {
-        console.error('Archive error:', err);
-        alert('Error fetching archive: ' + err.message);
-    }
-};
 
-window.showDetails = async function(docId) {
-    try {
-        const docRef = doc(db, 'submissions', docId);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            const modalDetails = document.getElementById('modal-details');
-            modalDetails.textContent = JSON.stringify(data, null, 2);
-            document.getElementById('details-modal').classList.remove('hidden');
-            document.getElementById('details-modal').querySelector('.transform').classList.remove('translate-y-full');
-            document.getElementById('details-modal').querySelector('.transform').classList.add('translate-y-0');
-        } else {
-            alert('No such document!');
-        }
-    } catch (err) {
-        console.error('Details error:', err);
-        alert('Error fetching details: ' + err.message);
-    }
-};
-
-window.closeModal = function() {
-    const modal = document.getElementById('details-modal');
-    modal.querySelector('.transform').classList.remove('translate-y-0');
-    modal.querySelector('.transform').classList.add('translate-y-full');
-    setTimeout(() => {
-        modal.classList.add('hidden');
+        mainContent.style.opacity = "1";
+        mainContent.style.transition = "opacity 0.5s ease";
+        console.log(`Finished rendering section: ${section}`);
+      } catch (error) {
+        console.error(`Error in renderSection for ${section}:`, error);
+        mainContent.innerHTML = `<p class="text-red-600">Error loading section. Please try again.</p>`;
+        mainContent.style.opacity = "1";
+      }
     }, 300);
-};
+  }
+});
