@@ -12,23 +12,22 @@
 </head>
 <body class="min-h-screen bg-gray-100">
     <!-- Login Container -->
-    <div id="login-container" class="min-h-screen">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md mx-auto mt-8 transform transition-all">
-            <div class="text-center mb-6">
-                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23dc2626'%3E%3Cpath d='M20 70h60v10H20zM20 50h40v10H20zM20 30h20v10H20zM70 30h10v50H70z'/%3E%3Ccircle cx='50' cy='20' r='10'/%3E%3C/svg%3E" alt="KPI Dashboard Logo" class="mx-auto w-16 h-16">
-                <h1 class="text-3xl font-extrabold text-gray-800 mt-4">KPI Dashboard</h1>
+<div id="login-container" class="min-h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md mx-auto mt-8 transform transition-all login-box">
+        <div class="text-center mb-6">
+            <h1>KPI WKW AUTOMOTIVE</h1>
+        </div>
+        <form id="login-form">
+            <div class="mb-6 input-group">
+                <input type="email" id="email" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder=" " aria-describedby="error-message">
+                <label for="email" class="text-sm font-semibold text-gray-700">Email</label>
             </div>
-            <form id="login-form">
-                <div class="mb-6 relative">
-                    <input type="email" id="email" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer" placeholder=" " aria-describedby="error-message">
-                    <label for="email" class="absolute left-3 -top-2 text-sm font-semibold text-gray-700 bg-white px-1 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2 peer-focus:text-sm peer-focus:text-gray-700">Email</label>
-                </div>
-                <div class="mb-6 relative">
-                    <input type="password" id="password" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent peer" placeholder=" " aria-describedby="error-message">
-                    <label for="password" class="absolute left-3 -top-2 text-sm font-semibold text-gray-700 bg-white px-1 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2 peer-focus:text-sm peer-focus:text-gray-700">Password</label>
-                </div>
-                <button type="submit" id="login-btn" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Login</button>
-                <p id="error-message" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
+            <div class="mb-6 input-group">
+                <input type="password" id="password" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder=" " aria-describedby="error-message">
+                <label for="password" class="text-sm font-semibold text-gray-700">Password</label>
+            </div>
+            <button type="submit" id="login-btn" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Login</button>
+            <p id="error-message" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
             </form>
         </div>
     </div>
@@ -74,3 +73,4 @@
     <script type="module" src="script.js"></script>
 </body>
 </html>
+
