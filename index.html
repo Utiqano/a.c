@@ -181,6 +181,42 @@
             display: none;
         }
 
+        /* Filter Form */
+        .filter-form {
+            background: #ffffff;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 700px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            animation: slideInUp 0.6s ease-in-out;
+        }
+
+        .filter-form .form-group {
+            flex: 1 1 200px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+        }
+
+        .filter-buttons button {
+            flex: 1;
+        }
+
+        .filter-buttons #clear-filters {
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+        }
+
+        .filter-buttons #clear-filters:hover {
+            background: linear-gradient(90deg, #c0392b, #e74c3c);
+        }
+
         /* Dashboard Styles */
         .dashboard-container {
             display: none;
@@ -429,9 +465,13 @@
                 margin-left: 220px;
             }
 
-            .content form, .archive-table, .chart-container {
+            .content form, .archive-table, .chart-container, .filter-form {
                 padding: 1rem;
                 max-width: 100%;
+            }
+
+            .filter-form .form-group {
+                flex: 1 1 100%;
             }
 
             .login-box {
@@ -659,6 +699,52 @@
             console.log('Sidebar toggled at', new Date().toLocaleString());
         };
 
+        // Apply filters to data
+        window.applyFilters = function(section, data) {
+            const uapFilter = document.getElementById('filter-uap')?.value.trim().toLowerCase();
+            const dateStartFilter = document.getElementById('filter-date-start')?.value;
+            const dateEndFilter = document.getElementById('filter-date-end')?.value;
+            const weekFilter = document.getElementById('filter-week')?.value;
+            const ligneFilter = document.getElementById('filter-ligne')?.value.trim().toLowerCase();
+
+            return Object.entries(data).filter(([key, entry]) => {
+                let pass = true;
+                if (uapFilter && entry.uap?.toLowerCase().indexOf(uapFilter) === -1) {
+                    pass = false;
+                }
+                if (dateStartFilter && dateEndFilter) {
+                    const entryDate = new Date(entry.date).getTime();
+                    const startDate = new Date(dateStartFilter).getTime();
+                    const endDate = new Date(dateEndFilter).getTime();
+                    if (entryDate < startDate || entryDate > endDate) {
+                        pass = false;
+                    }
+                } else if (dateStartFilter && entry.date !== dateStartFilter) {
+                    pass = false;
+                }
+                if (weekFilter && entry.semaine != weekFilter && entry.week != weekFilter) {
+                    pass = false;
+                }
+                if (ligneFilter && entry.ligne?.toLowerCase().indexOf(ligneFilter) === -1) {
+                    pass = false;
+                }
+                return pass;
+            }).reduce((obj, [key, entry]) => {
+                obj[key] = entry;
+                return obj;
+            }, {});
+        };
+
+        // Clear filters
+        window.clearFilters = function(section) {
+            const form = document.getElementById('filter-form');
+            if (form) {
+                form.reset();
+                showSectionData(section);
+            }
+            console.log(`Filters cleared for ${section} at`, new Date().toLocaleString());
+        };
+
         // Show section-specific data in Dashboard
         window.showSectionData = function(section) {
             const contentBody = document.getElementById('content-body');
@@ -679,9 +765,39 @@
             };
             contentTitle.textContent = `Dashboard - ${sectionNames[section] || section}`;
 
+            // Render filter form
+            contentBody.innerHTML = `
+                <form id="filter-form" class="filter-form">
+                    <div class="form-group">
+                        <label for="filter-uap">UAP</label>
+                        <input type="text" id="filter-uap" placeholder="Enter UAP">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-date-start">Date Start</label>
+                        <input type="date" id="filter-date-start">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-date-end">Date End</label>
+                        <input type="date" id="filter-date-end">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-week">Week</label>
+                        <input type="number" id="filter-week" placeholder="Enter Week" min="1" max="52">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-ligne">Ligne</label>
+                        <input type="text" id="filter-ligne" placeholder="Enter Ligne">
+                    </div>
+                    <div class="filter-buttons">
+                        <button type="button" onclick="showSectionData('${section}')">Apply Filters</button>
+                        <button type="button" id="clear-filters" onclick="clearFilters('${section}')">Clear Filters</button>
+                    </div>
+                </form>
+            `;
+
             // Handle Top Action sections (display table)
             if (section === 'top-action-5s' || section === 'top-action-gemba') {
-                contentBody.innerHTML = `
+                contentBody.innerHTML += `
                     <div class="archive-table">
                         <h3>${sectionNames[section]} Data</h3>
                         <table>
@@ -701,8 +817,9 @@
                 onValue(ref(db, section), (snapshot) => {
                     const tableBody = document.getElementById(`${section}-table-body`);
                     tableBody.innerHTML = '';
-                    if (snapshot.exists()) {
-                        const data = snapshot.val();
+                    let data = snapshot.val() || {};
+                    data = applyFilters(section, data);
+                    if (Object.keys(data).length > 0) {
                         Object.entries(data).forEach(([key, entry], index) => {
                             const row = document.createElement('tr');
                             row.style.setProperty('--i', index);
@@ -715,9 +832,9 @@
                             tableBody.appendChild(row);
                         });
                     } else {
-                        tableBody.innerHTML = '<tr><td colspan="4">No data available.</td></tr>';
+                        tableBody.innerHTML = '<tr><td colspan="4">No data matches the filters.</td></tr>';
                     }
-                    console.log(`Rendered table for ${section} at`, new Date().toLocaleString());
+                    console.log(`Rendered table for ${section} with filters at`, new Date().toLocaleString());
                 }, (error) => {
                     console.error(`Error loading data for ${section}:`, error.message);
                     contentBody.innerHTML = `<p>Error loading data for ${sectionNames[section]}.</p>`;
@@ -727,13 +844,13 @@
 
             // Handle Audit sections (display charts)
             if (section !== 'audit-5s' && section !== 'audit-gemba') {
-                contentBody.innerHTML = `<p>No chart data available for ${sectionNames[section] || section}.</p>`;
+                contentBody.innerHTML += `<p>No chart data available for ${sectionNames[section] || section}.</p>`;
                 console.log(`No charts for section: ${section}`);
                 return;
             }
 
             // Render chart containers
-            contentBody.innerHTML = `
+            contentBody.innerHTML += `
                 <div class="chart-container">
                     <h3>${sectionNames[section]} Results (Line Chart)</h3>
                     <canvas id="line-chart"></canvas>
@@ -750,7 +867,8 @@
 
             // Fetch data for charts
             onValue(ref(db, section), (snapshot) => {
-                const data = snapshot.val() || {};
+                let data = snapshot.val() || {};
+                data = applyFilters(section, data);
                 const dates = [];
                 const results = [];
                 const weeks = {};
@@ -776,6 +894,42 @@
                 // Prepare bar chart data (average resultat per week)
                 const weekLabels = Object.keys(weeks).sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
                 const weekResults = weekLabels.map(week => (weeks[week].total / weeks[week].count).toFixed(2));
+
+                // Check if data is empty
+                if (dates.length === 0) {
+                    const chartContainer = document.getElementById('content-body');
+                    chartContainer.innerHTML = `
+                        <form id="filter-form" class="filter-form">
+                            <div class="form-group">
+                                <label for="filter-uap">UAP</label>
+                                <input type="text" id="filter-uap" placeholder="Enter UAP">
+                            </div>
+                            <div class="form-group">
+                                <label for="filter-date-start">Date Start</label>
+                                <input type="date" id="filter-date-start">
+                            </div>
+                            <div class="form-group">
+                                <label for="filter-date-end">Date End</label>
+                                <input type="date" id="filter-date-end">
+                            </div>
+                            <div class="form-group">
+                                <label for="filter-week">Week</label>
+                                <input type="number" id="filter-week" placeholder="Enter Week" min="1" max="52">
+                            </div>
+                            <div class="form-group">
+                                <label for="filter-ligne">Ligne</label>
+                                <input type="text" id="filter-ligne" placeholder="Enter Ligne">
+                            </div>
+                            <div class="filter-buttons">
+                                <button type="button" onclick="showSectionData('${section}')">Apply Filters</button>
+                                <button type="button" id="clear-filters" onclick="clearFilters('${section}')">Clear Filters</button>
+                            </div>
+                        </form>
+                        <p>No data matches the filters.</p>
+                    `;
+                    console.log(`No data for ${section} after filtering at`, new Date().toLocaleString());
+                    return;
+                }
 
                 // Line Chart with custom tooltips
                 lineChartInstance = new Chart(document.getElementById('line-chart'), {
@@ -854,7 +1008,7 @@
                     }
                 });
 
-                console.log(`Rendered charts for ${section}:`, { dates, results, weekLabels, weekResults }, 'at', new Date().toLocaleString());
+                console.log(`Rendered charts for ${section} with filters:`, { dates, results, weekLabels, weekResults }, 'at', new Date().toLocaleString());
             }, (error) => {
                 console.error(`Error loading data for ${section}:`, error.message);
                 contentBody.innerHTML = `<p>Error loading chart data for ${sectionNames[section]}.</p>`;
