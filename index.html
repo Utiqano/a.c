@@ -276,7 +276,6 @@
         }
 
         .navbar {
-            display: none;
             background: linear-gradient(90deg, #3498db, #00c4b4);
             color: white;
             padding: 1rem;
@@ -286,18 +285,28 @@
             right: 0;
             z-index: 1000;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
             animation: fadeIn 0.6s ease-in-out;
+        }
+
+        .navbar.active {
+            transform: translateY(0);
         }
 
         .navbar ul {
             list-style: none;
             display: flex;
-            gap: 1.2rem;
             flex-wrap: wrap;
+            gap: 1rem;
+            padding: 0;
+            margin: 0;
+            overflow-x: auto;
+            white-space: nowrap;
         }
 
         .navbar li {
-            padding: 0.6rem 1.2rem;
+            padding: 0.6rem 1rem;
             cursor: pointer;
             border-radius: 6px;
             transition: background-color 0.3s, transform 0.2s;
@@ -411,22 +420,29 @@
             transform: scale(1.02);
         }
 
-        /* Hamburger Menu for Mobile */
-        .hamburger {
-            display: none;
+        /* Hamburger Menus for Sidebar and Navbar */
+        .hamburger, .navbar-toggle {
             font-size: 1.8rem;
             cursor: pointer;
             padding: 1rem;
             background: #2c3e50;
             color: white;
             position: fixed;
-            top: 0;
-            left: 0;
             z-index: 1001;
             transition: background-color 0.3s;
         }
 
-        .hamburger:hover {
+        .hamburger {
+            top: 0;
+            left: 0;
+        }
+
+        .navbar-toggle {
+            top: 0;
+            left: 50px;
+        }
+
+        .hamburger:hover, .navbar-toggle:hover {
             background-color: #34495e;
         }
 
@@ -439,6 +455,24 @@
 
             .sidebar.active {
                 transform: translateX(0);
+                z-index: 1002;
+            }
+
+            .navbar {
+                left: 0;
+                width: 100%;
+                padding: 0.5rem;
+            }
+
+            .navbar ul {
+                flex-direction: row;
+                gap: 0.5rem;
+                padding: 0.5rem;
+            }
+
+            .navbar li {
+                font-size: 0.9rem;
+                padding: 0.4rem 0.8rem;
             }
 
             .content {
@@ -447,21 +481,7 @@
                 margin-top: 50px;
             }
 
-            .navbar {
-                left: 0;
-                padding: 0.8rem;
-            }
-
-            .navbar ul {
-                flex-direction: column;
-                gap: 0.8rem;
-            }
-
-            .hamburger {
-                display: block;
-            }
-
-            .content.active {
+            .content.active-sidebar {
                 margin-left: 220px;
             }
 
@@ -531,8 +551,9 @@
 
     <!-- Dashboard Container -->
     <div class="dashboard-container" id="dashboard-container">
-        <!-- Hamburger Menu -->
+        <!-- Hamburger Menus -->
         <div class="hamburger" id="hamburger" onclick="toggleSidebar()">☰</div>
+        <div class="navbar-toggle" id="navbar-toggle" onclick="toggleNavbar()">≡</div>
 
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
@@ -561,9 +582,7 @@
         <!-- Content Area -->
         <div class="content" id="content">
             <h2 id="content-title">KPI Dashboard</h2>
-            <div id="content-body">
-                <p id="content-text">Welcome to the KPI Dashboard. Select an item from the sidebar to view details.</p>
-            </div>
+            <div id="content-body"></div>
         </div>
     </div>
 
@@ -695,39 +714,67 @@
             const sidebar = document.getElementById('sidebar');
             const content = document.getElementById('content');
             sidebar.classList.toggle('active');
-            content.classList.toggle('active');
+            content.classList.toggle('active-sidebar');
             console.log('Sidebar toggled at', new Date().toLocaleString());
+        };
+
+        // Toggle Navbar for All Platforms
+        window.toggleNavbar = function() {
+            const navbar = document.getElementById('navbar');
+            navbar.classList.toggle('active');
+            console.log('Navbar toggled to', navbar.classList.contains('active') ? 'visible' : 'hidden', 'at', new Date().toLocaleString());
         };
 
         // Apply filters to data
         window.applyFilters = function(section, data) {
-            const uapFilter = document.getElementById('filter-uap')?.value.trim().toLowerCase();
+            const uapFilter = document.getElementById('filter-uap')?.value.trim().toLowerCase() || '';
             const dateStartFilter = document.getElementById('filter-date-start')?.value;
             const dateEndFilter = document.getElementById('filter-date-end')?.value;
             const weekFilter = document.getElementById('filter-week')?.value;
-            const ligneFilter = document.getElementById('filter-ligne')?.value.trim().toLowerCase();
+            const ligneFilter = document.getElementById('filter-ligne')?.value.trim().toLowerCase() || '';
+            const sectionFilter = document.getElementById('filter-section')?.value.trim().toLowerCase() || '';
+
+            console.log(`Applying filters for ${section}:`, { uapFilter, dateStartFilter, dateEndFilter, weekFilter, ligneFilter, sectionFilter });
 
             return Object.entries(data).filter(([key, entry]) => {
                 let pass = true;
-                if (uapFilter && entry.uap?.toLowerCase().indexOf(uapFilter) === -1) {
+
+                // UAP filter
+                if (uapFilter && entry.uap && entry.uap.toLowerCase().indexOf(uapFilter) === -1) {
                     pass = false;
                 }
+
+                // Date range filter
                 if (dateStartFilter && dateEndFilter) {
-                    const entryDate = new Date(entry.date).getTime();
-                    const startDate = new Date(dateStartFilter).getTime();
-                    const endDate = new Date(dateEndFilter).getTime();
-                    if (entryDate < startDate || entryDate > endDate) {
+                    const entryDate = new Date(entry.date || entry.timestamp);
+                    const startDate = new Date(dateStartFilter);
+                    const endDate = new Date(dateEndFilter);
+                    endDate.setHours(23, 59, 59, 999); // Include entire end date
+                    if (isNaN(entryDate.getTime()) || entryDate < startDate || entryDate > endDate) {
                         pass = false;
                     }
                 } else if (dateStartFilter && entry.date !== dateStartFilter) {
                     pass = false;
                 }
-                if (weekFilter && entry.semaine != weekFilter && entry.week != weekFilter) {
+
+                // Week filter
+                if (weekFilter) {
+                    const weekValue = parseInt(weekFilter);
+                    if ((entry.semaine && parseInt(entry.semaine) !== weekValue) || (entry.week && parseInt(entry.week) !== weekValue)) {
+                        pass = false;
+                    }
+                }
+
+                // Ligne filter
+                if (ligneFilter && entry.ligne && entry.ligne.toLowerCase().indexOf(ligneFilter) === -1) {
                     pass = false;
                 }
-                if (ligneFilter && entry.ligne?.toLowerCase().indexOf(ligneFilter) === -1) {
+
+                // Section filter (for archive)
+                if (sectionFilter && entry.section && entry.section.toLowerCase().indexOf(sectionFilter) === -1) {
                     pass = false;
                 }
+
                 return pass;
             }).reduce((obj, [key, entry]) => {
                 obj[key] = entry;
@@ -740,7 +787,11 @@
             const form = document.getElementById('filter-form');
             if (form) {
                 form.reset();
-                showSectionData(section);
+                if (section === 'archive') {
+                    showArchiveData();
+                } else {
+                    showSectionData(section);
+                }
             }
             console.log(`Filters cleared for ${section} at`, new Date().toLocaleString());
         };
@@ -819,22 +870,23 @@
                     tableBody.innerHTML = '';
                     let data = snapshot.val() || {};
                     data = applyFilters(section, data);
+                    console.log(`Filtered data for ${section}:`, data);
                     if (Object.keys(data).length > 0) {
                         Object.entries(data).forEach(([key, entry], index) => {
                             const row = document.createElement('tr');
                             row.style.setProperty('--i', index);
                             row.innerHTML = `
-                                <td>${entry.date}</td>
-                                <td>${entry.semaine}</td>
-                                <td>${entry.ligne}</td>
-                                <td>${entry.action}</td>
+                                <td>${entry.date || 'N/A'}</td>
+                                <td>${entry.semaine || entry.week || 'N/A'}</td>
+                                <td>${entry.ligne || 'N/A'}</td>
+                                <td>${entry.action || 'N/A'}</td>
                             `;
                             tableBody.appendChild(row);
                         });
                     } else {
                         tableBody.innerHTML = '<tr><td colspan="4">No data matches the filters.</td></tr>';
                     }
-                    console.log(`Rendered table for ${section} with filters at`, new Date().toLocaleString());
+                    console.log(`Rendered table for ${section} with ${Object.keys(data).length} rows at`, new Date().toLocaleString());
                 }, (error) => {
                     console.error(`Error loading data for ${section}:`, error.message);
                     contentBody.innerHTML = `<p>Error loading data for ${sectionNames[section]}.</p>`;
@@ -869,6 +921,7 @@
             onValue(ref(db, section), (snapshot) => {
                 let data = snapshot.val() || {};
                 data = applyFilters(section, data);
+                console.log(`Filtered data for ${section}:`, data);
                 const dates = [];
                 const results = [];
                 const weeks = {};
@@ -876,24 +929,30 @@
 
                 // Process data
                 Object.values(data).forEach(entry => {
-                    dates.push(entry.date);
-                    results.push(entry.resultat);
-                    tooltips.push({
-                        ligne: entry.ligne,
-                        uap: entry.uap,
-                        date: entry.date,
-                        semaine: entry.semaine,
-                        resultat: entry.resultat
-                    });
-                    const week = `Week ${entry.semaine}`;
-                    if (!weeks[week]) weeks[week] = { total: 0, count: 0 };
-                    weeks[week].total += entry.resultat;
-                    weeks[week].count += 1;
+                    if (entry.date && entry.resultat != null) {
+                        dates.push(entry.date);
+                        results.push(entry.resultat);
+                        tooltips.push({
+                            ligne: entry.ligne || 'N/A',
+                            uap: entry.uap || 'N/A',
+                            date: entry.date,
+                            semaine: entry.semaine || entry.week || 'N/A',
+                            resultat: entry.resultat
+                        });
+                        const week = `Week ${entry.semaine || entry.week || 'Unknown'}`;
+                        if (!weeks[week]) weeks[week] = { total: 0, count: 0 };
+                        weeks[week].total += parseFloat(entry.resultat) || 0;
+                        weeks[week].count += 1;
+                    }
                 });
 
                 // Prepare bar chart data (average resultat per week)
-                const weekLabels = Object.keys(weeks).sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
-                const weekResults = weekLabels.map(week => (weeks[week].total / weeks[week].count).toFixed(2));
+                const weekLabels = Object.keys(weeks).sort((a, b) => {
+                    const weekA = parseInt(a.split(' ')[1]) || 0;
+                    const weekB = parseInt(b.split(' ')[1]) || 0;
+                    return weekA - weekB;
+                });
+                const weekResults = weekLabels.map(week => weeks[week].count > 0 ? (weeks[week].total / weeks[week].count).toFixed(2) : 0);
 
                 // Check if data is empty
                 if (dates.length === 0) {
@@ -935,7 +994,7 @@
                 lineChartInstance = new Chart(document.getElementById('line-chart'), {
                     type: 'line',
                     data: {
-                        labels: dates.sort(),
+                        labels: dates.sort((a, b) => new Date(a) - new Date(b)),
                         datasets: [{
                             label: `${sectionNames[section]} Percentage`,
                             data: results,
@@ -1015,6 +1074,90 @@
             });
         };
 
+        // Show archive data with filtering
+        window.showArchiveData = function() {
+            const contentBody = document.getElementById('content-body');
+            const contentTitle = document.getElementById('content-title');
+            contentTitle.textContent = 'Archive';
+
+            // Render filter form with section filter
+            contentBody.innerHTML = `
+                <form id="filter-form" class="filter-form">
+                    <div class="form-group">
+                        <label for="filter-uap">UAP</label>
+                        <input type="text" id="filter-uap" placeholder="Enter UAP">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-date-start">Date Start</label>
+                        <input type="date" id="filter-date-start">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-date-end">Date End</label>
+                        <input type="date" id="filter-date-end">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-week">Week</label>
+                        <input type="number" id="filter-week" placeholder="Enter Week" min="1" max="52">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-ligne">Ligne</label>
+                        <input type="text" id="filter-ligne" placeholder="Enter Ligne">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-section">Section</label>
+                        <input type="text" id="filter-section" placeholder="Enter Section">
+                    </div>
+                    <div class="filter-buttons">
+                        <button type="button" onclick="showArchiveData()">Apply Filters</button>
+                        <button type="button" id="clear-filters" onclick="clearFilters('archive')">Clear Filters</button>
+                    </div>
+                </form>
+                <div class="archive-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Section</th>
+                                <th>Date</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="archive-table-body"></tbody>
+                    </table>
+                </div>
+                <button id="export-archive" onclick="exportToExcel('archive-table-body', 'archive-data')">Export to Excel</button>
+            `;
+
+            // Load archive data
+            onValue(ref(db, 'archive'), (snapshot) => {
+                const tableBody = document.getElementById('archive-table-body');
+                tableBody.innerHTML = '';
+                let data = snapshot.val() || {};
+                data = applyFilters('archive', data);
+                console.log('Filtered archive data:', data);
+                if (Object.keys(data).length > 0) {
+                    Object.entries(data).forEach(([key, entry], index) => {
+                        const row = document.createElement('tr');
+                        row.style.setProperty('--i', index);
+                        const details = Object.entries(entry)
+                            .filter(([k]) => k !== 'timestamp' && k !== 'userId' && k !== 'section')
+                            .map(([k, v]) => `${k}: ${v}`).join(', ');
+                        row.innerHTML = `
+                            <td>${entry.section || 'N/A'}</td>
+                            <td>${entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : 'N/A'}</td>
+                            <td>${details || 'N/A'}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="3">No data matches the filters.</td></tr>';
+                }
+                console.log(`Rendered archive table with ${Object.keys(data).length} rows at`, new Date().toLocaleString());
+            }, (error) => {
+                console.error('Error loading archive:', error.message);
+                document.getElementById('archive-table-body').innerHTML = '<tr><td colspan="3">Error loading data.</td></tr>';
+            });
+        };
+
         // Show content and manage navbar/form/visualizations
         window.showContent = function(section) {
             const contentTitle = document.getElementById('content-title');
@@ -1045,37 +1188,30 @@
                 { id: 'archive', name: 'Archive' }
             ];
 
-            // Update navbar content
+            // Update navbar content with all sections
             navbarList.innerHTML = '';
-            let navbarItems = [];
-            if (section === 'archive') {
-                navbarItems = sections;
-            } else if (section === 'dashboard') {
-                navbarItems = sections.filter(s => s.id !== 'dashboard' && s.id !== 'archive');
-            }
+            sections.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.textContent = item.name;
+                li.style.setProperty('--i', index);
+                li.onclick = () => {
+                    if (section === 'dashboard') {
+                        showSectionData(item.id);
+                    } else {
+                        showContent(item.id);
+                    }
+                    if (window.innerWidth <= 768) {
+                        navbar.classList.remove('active'); // Hide navbar after selection on mobile
+                    }
+                };
+                navbarList.appendChild(li);
+            });
 
-            if (section === 'dashboard' || section === 'archive') {
-                navbar.style.display = 'flex';
-                navbarItems.forEach((item, index) => {
-                    const li = document.createElement('li');
-                    li.textContent = item.name;
-                    li.style.setProperty('--i', index);
-                    li.onclick = () => {
-                        if (section === 'dashboard') {
-                            showSectionData(item.id);
-                        } else {
-                            showContent(item.id);
-                        }
-                    };
-                    navbarList.appendChild(li);
-                });
-            } else {
-                navbar.style.display = 'none';
-            }
+            // Navbar is hidden by default, controlled by toggleNavbar
+            navbar.classList.remove('active');
 
             // Update content
             contentTitle.textContent = sections.find(s => s.id === section)?.name || 'KPI Dashboard';
-            contentBody.innerHTML = '';
 
             const forms = {
                 'audit-5s': `
@@ -1289,63 +1425,26 @@
                         <div class="error" id="top-action-gemba-error"></div>
                     </form>
                 `,
-                'archive': `
-                    <div class="archive-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Section</th>
-                                    <th>Date</th>
-                                    <th>Details</th>
-                                </tr>
-                            </thead>
-                            <tbody id="archive-table-body"></tbody>
-                        </table>
-                    </div>
-                    <button id="export-archive" onclick="exportToExcel('archive-table-body', 'archive-data')">Export to Excel</button>
-                `,
-                'dashboard': `
-                    <p>Select a section from the navbar to view data.</p>
-                `
+                'archive': ``,
+                'dashboard': ``,
+                'kpi-dashboard': `<p>Welcome to the KPI Dashboard. Select an item from the sidebar to view details.</p>`
             };
 
-            contentBody.innerHTML = forms[section] || `<p>This is the ${contentTitle.textContent} section. Add your specific content here.</p>`;
-
-            // Load archive data
-            if (section === 'archive') {
-                onValue(ref(db, 'archive'), (snapshot) => {
-                    const tableBody = document.getElementById('archive-table-body');
-                    tableBody.innerHTML = '';
-                    if (snapshot.exists()) {
-                        const data = snapshot.val();
-                        Object.entries(data).forEach(([key, entry], index) => {
-                            const row = document.createElement('tr');
-                            row.style.setProperty('--i', index);
-                            const details = Object.entries(entry)
-                                .filter(([k]) => k !== 'timestamp' && k !== 'userId' && k !== 'section')
-                                .map(([k, v]) => `${k}: ${v}`).join(', ');
-                            row.innerHTML = `
-                                <td>${entry.section}</td>
-                                <td>${new Date(entry.timestamp).toLocaleDateString()}</td>
-                                <td>${details}</td>
-                            `;
-                            tableBody.appendChild(row);
-                        });
-                    } else {
-                        tableBody.innerHTML = '<tr><td colspan="3">No archived data available.</td></tr>';
-                    }
-                }, (error) => {
-                    console.error('Error loading archive:', error.message);
-                    document.getElementById('archive-table-body').innerHTML = '<tr><td colspan="3">Error loading data.</td></tr>';
-                });
+            // Handle Dashboard section
+            if (section === 'dashboard') {
+                showSectionData('audit-5s'); // Default to a section with data
+            } else if (section === 'archive') {
+                showArchiveData();
+            } else {
+                contentBody.innerHTML = forms[section] || `<p>This is the ${contentTitle.textContent} section. Add your specific content here.</p>`;
             }
 
-            console.log('Content updated to section:', section, 'Navbar items:', navbarItems.map(i => i.name), 'at', new Date().toLocaleString());
+            console.log('Content updated to section:', section, 'Navbar items:', sections.map(i => i.name), 'at', new Date().toLocaleString());
 
             // Close sidebar on mobile after selection
             if (window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.remove('active');
-                document.getElementById('content').classList.remove('active');
+                document.getElementById('content').classList.remove('active-sidebar');
             }
         };
 
