@@ -4,73 +4,1370 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KPI Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a3c5e, #3498db);
+            color: #333;
+        }
+
+        /* Loading State */
+        .loading-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #00c4b4;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Login Styles */
+        .login-container {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .login-box {
+            background: linear-gradient(135deg, #ffffff, #ecf0f1);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 450px;
+            animation: slideInUp 0.6s ease-in-out;
+        }
+
+        @keyframes slideInUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .login-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #1a3c5e;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            display: inline-block;
+            animation: typing 3s steps(40, end) infinite, blink-caret 0.75s step-end infinite;
+        }
+
+        @keyframes typing {
+            0% { width: 0; }
+            50% { width: 100%; }
+            100% { width: 0; }
+        }
+
+        @keyframes blink-caret {
+            from, to { border-right-color: transparent; }
+            50% { border-right-color: #1a3c5e; }
+        }
+
+        .login-box h2 {
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #1a3c5e;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 400;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #00c4b4;
+            box-shadow: 0 0 8px rgba(0, 196, 180, 0.2);
+            outline: none;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.9rem;
+            border: none;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #00c4b4, #1a3c5e);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .toggle a {
+            color: #00c4b4;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .toggle a:hover {
+            color: #1a3c5e;
+            text-decoration: underline;
+        }
+
+        .error, .success {
+            text-align: center;
+            margin-bottom: 1rem;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .error {
+            color: #e74c3c;
+        }
+
+        .success {
+            color: #27ae60;
+        }
+
+        #signup-form {
+            display: none;
+        }
+
+        /* Dashboard Styles */
+        .dashboard-container {
+            display: none;
+            flex-direction: row;
+            min-height: 100vh;
+            animation: fadeIn 0.6s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #2c3e50, #1a3c5e);
+            color: white;
+            padding: 1.5rem;
+            height: 100vh;
+            position: fixed;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+            animation: slideInLeft 0.6s ease-in-out;
+        }
+
+        @keyframes slideInLeft {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+
+        .sidebar h2 {
+            margin-bottom: 2rem;
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar li {
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .sidebar li:hover {
+            background-color: #34495e;
+            transform: translateX(5px);
+        }
+
+        .sidebar li.active {
+            background: linear-gradient(90deg, #00c4b4, #3498db);
+            transform: translateX(5px);
+        }
+
+        .navbar {
+            display: none;
+            background: linear-gradient(90deg, #3498db, #00c4b4);
+            color: white;
+            padding: 1rem;
+            position: fixed;
+            top: 0;
+            left: 260px;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.6s ease-in-out;
+        }
+
+        .navbar ul {
+            list-style: none;
+            display: flex;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+        }
+
+        .navbar li {
+            padding: 0.6rem 1.2rem;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background-color 0.3s, transform 0.2s;
+            animation: slideInUp 0.3s ease-in-out;
+            animation-delay: calc(0.1s * var(--i));
+        }
+
+        .navbar li:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
+
+        .content {
+            margin-left: 260px;
+            padding: 2.5rem;
+            flex-grow: 1;
+            margin-top: 60px;
+            transition: margin-left 0.3s ease;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.6s ease-in-out;
+        }
+
+        .content h2 {
+            margin-bottom: 1.5rem;
+            color: #1a3c5e;
+            font-weight: 600;
+        }
+
+        .content form {
+            background: #ffffff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 700px;
+            animation: slideInUp 0.6s ease-in-out;
+        }
+
+        .archive-table {
+            width: 100%;
+            max-width: 900px;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+            animation: slideInUp 0.6s ease-in-out;
+        }
+
+        .archive-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .archive-table th, .archive-table td {
+            padding: 1rem;
+            border: 1px solid #e0e0e0;
+            text-align: left;
+        }
+
+        .archive-table th {
+            background: linear-gradient(90deg, #3498db, #00c4b4);
+            color: white;
+            font-weight: 600;
+        }
+
+        .archive-table tr {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .archive-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .archive-table tr:hover {
+            background-color: #ecf0f1;
+            transition: background-color 0.3s;
+        }
+
+        .chart-container {
+            max-width: 700px;
+            margin-top: 1.5rem;
+            background: #ffffff;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            animation: slideInUp 0.6s ease-in-out;
+        }
+
+        .logout, #export-archive {
+            margin-top: 1.5rem;
+            padding: 0.9rem;
+            font-weight: 600;
+        }
+
+        .logout {
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+        }
+
+        .logout:hover {
+            background: linear-gradient(90deg, #c0392b, #e74c3c);
+            transform: scale(1.02);
+        }
+
+        #export-archive {
+            background: linear-gradient(90deg, #27ae60, #2ecc71);
+        }
+
+        #export-archive:hover {
+            background: linear-gradient(90deg, #2ecc71, #27ae60);
+            transform: scale(1.02);
+        }
+
+        /* Hamburger Menu for Mobile */
+        .hamburger {
+            display: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            padding: 1rem;
+            background: #2c3e50;
+            color: white;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1001;
+            transition: background-color 0.3s;
+        }
+
+        .hamburger:hover {
+            background-color: #34495e;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 220px;
+                transform: translateX(-220px);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .content {
+                margin-left: 0;
+                padding: 1.5rem;
+                margin-top: 50px;
+            }
+
+            .navbar {
+                left: 0;
+                padding: 0.8rem;
+            }
+
+            .navbar ul {
+                flex-direction: column;
+                gap: 0.8rem;
+            }
+
+            .hamburger {
+                display: block;
+            }
+
+            .content.active {
+                margin-left: 220px;
+            }
+
+            .content form, .archive-table, .chart-container {
+                padding: 1rem;
+                max-width: 100%;
+            }
+
+            .login-box {
+                max-width: 90%;
+            }
+
+            .login-title {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
 </head>
-<body class="min-h-screen bg-gray-100">
+<body>
+    <!-- Loading Container -->
+    <div class="loading-container" id="loading-container">
+        <div class="spinner"></div>
+    </div>
+
     <!-- Login Container -->
-<div id="login-container" class="min-h-screen">
-    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md mx-auto mt-8 transform transition-all login-box">
-        <div class="text-center mb-6">
-            <h1>KPI WKW AUTOMOTIVE</h1>
-        </div>
-        <form id="login-form">
-            <div class="mb-6 input-group">
-                <input type="email" id="email" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder=" " aria-describedby="error-message">
-                <label for="email" class="text-sm font-semibold text-gray-700">Email</label>
+    <div class="login-container" id="login-container">
+        <div class="login-box">
+            <h1 class="login-title">KPI Amelioration Continu WKW Automotive</h1>
+            <div id="login-form">
+                <h2>Login</h2>
+                <div class="error" id="login-error"></div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+                <button onclick="handleLogin()">Login</button>
+                <div class="toggle">
+                    <p>Don't have an account? <a onclick="toggleForm()">Sign Up</a></p>
+                </div>
             </div>
-            <div class="mb-6 input-group">
-                <input type="password" id="password" class="mt-2 p-3 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder=" " aria-describedby="error-message">
-                <label for="password" class="text-sm font-semibold text-gray-700">Password</label>
+            <div id="signup-form">
+                <h2>Sign Up</h2>
+                <div class="error" id="signup-error"></div>
+                <div class="form-group">
+                    <label for="signup-email">Email</label>
+                    <input type="email" id="signup-email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" placeholder="Enter your password" required>
+                </div>
+                <button onclick="handleSignup()">Sign Up</button>
+                <div class="toggle">
+                    <p>Already have an account? <a onclick="toggleForm()">Login</a></p>
+                </div>
             </div>
-            <button type="submit" id="login-btn" class="w-full bg-red-600 text-white p-3 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">Login</button>
-            <p id="error-message" class="hidden text-red-600 mt-4 text-center font-medium" aria-live="polite"></p>
-            </form>
         </div>
     </div>
 
     <!-- Dashboard Container -->
-    <div id="dashboard-container" class="hidden min-h-screen">
-        <button class="hamburger hidden fixed top-4 left-4 z-50 bg-red-600 text-white p-3 rounded-lg" aria-label="Toggle navigation menu" aria-expanded="false">
-            <span></span><span></span><span></span>
-        </button>
-        <div class="flex h-full">
-            <!-- Sidebar -->
-            <div class="w-72 bg-gray-900 text-white p-6 shadow-lg">
-                <div class="user-profile mb-6 flex items-center">
-                    <i class="fas fa-user-circle text-2xl text-red-500 mr-2"></i>
-                    <span id="user-email" class="text-sm font-semibold truncate"></span>
-                </div>
-                <h2 class="text-2xl font-bold mb-6 text-red-500">KPI Dashboard</h2>
-                <ul role="navigation">
-                    <li><a href="#" data-section="Dashboard" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-tachometer-alt mr-2"></i> Dashboard</a></li>
-                    <li><a href="#" data-section="Audit 5S" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-check-circle mr-2"></i> Audit 5S</a></li>
-                    <li><a href="#" data-section="Audit Gemba" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-walking mr-2"></i> Audit Gemba</a></li>
-                    <li><a href="#" data-section="TAU Emplissage" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-fill-drip mr-2"></i> TAU Emplissage</a></li>
-                    <li><a href="#" data-section="Taux Absenteisme" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-user-times mr-2"></i> Taux Absenteisme</a></li>
-                    <li><a href="#" data-section="Taux Realisation 5S" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-chart-line mr-2"></i> Taux Realisation 5S</a></li>
-                    <li><a href="#" data-section="Taux Realisation Gemba" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-chart-bar mr-2"></i> Taux Realisation Gemba</a></li>
-                    <li><a href="#" data-section="Top Action 5S" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-star mr-2"></i> Top Action 5S</a></li>
-                    <li><a href="#" data-section="Top Action Gemba" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-tasks mr-2"></i> Top Action Gemba</a></li>
-                    <li><a href="#" data-section="Archive" class="block p-3 text-red-500 hover:bg-gray-700 hover:text-red-400 rounded-lg transition-all duration-200"><i class="fas fa-archive mr-2"></i> Archive</a></li>
-                    <li><a href="#" id="logout-btn" class="block p-3 bg-red-500 text-white hover:bg-red-600 rounded-lg transition-all duration-200 mt-4"><i class="fas fa-sign-out-alt mr-2"></i> Logout</a></li>
-                </ul>
-            </div>
-            <!-- Main Content -->
-            <div class="flex-1 p-10 bg-gray-100 main-content">
-                <header class="mb-6">
-                    <h1 id="section-title" class="text-3xl font-extrabold text-gray-800">Dashboard</h1>
-                    <nav class="text-sm text-gray-600">KPI Dashboard > <span id="breadcrumb-section">Dashboard</span></nav>
-                </header>
-                <div id="main-content" class="main-content"></div>
+    <div class="dashboard-container" id="dashboard-container">
+        <!-- Hamburger Menu -->
+        <div class="hamburger" id="hamburger" onclick="toggleSidebar()">☰</div>
+
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <h2>KPI Dashboard</h2>
+            <ul>
+                <li onclick="showContent('kpi-dashboard')" class="active">KPI Dashboard</li>
+                <li onclick="showContent('dashboard')">Dashboard</li>
+                <li onclick="showContent('audit-5s')">Audit 5S</li>
+                <li onclick="showContent('audit-gemba')">Audit Gemba</li>
+                <li onclick="showContent('tau-emplissage')">TAU Emplissage</li>
+                <li onclick="showContent('taux-absenteisme')">Taux Absenteisme</li>
+                <li onclick="showContent('taux-realisation-5s')">Taux Realisation 5S</li>
+                <li onclick="showContent('taux-realisation-gemba')">Taux Realisation Gemba</li>
+                <li onclick="showContent('top-action-5s')">Top Action 5S</li>
+                <li onclick="showContent('top-action-gemba')">Top Action Gemba</li>
+                <li onclick="showContent('archive')">Archive</li>
+            </ul>
+            <button class="logout" onclick="handleLogout()">Logout</button>
+        </div>
+
+        <!-- Navbar -->
+        <div class="navbar" id="navbar">
+            <ul id="navbar-list"></ul>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content" id="content">
+            <h2 id="content-title">KPI Dashboard</h2>
+            <div id="content-body">
+                <p id="content-text">Welcome to the KPI Dashboard. Select an item from the sidebar to view details.</p>
             </div>
         </div>
     </div>
 
-    <script type="module" src="script.js"></script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyARc68C9RvqPHedrAtxJcZCUeZIEfn1XnA",
+            authDomain: "dashbord-10e83.firebaseapp.com",
+            databaseURL: "https://dashbord-10e83-default-rtdb.firebaseio.com",
+            projectId: "dashbord-10e83",
+            storageBucket: "dashbord-10e83.firebasestorage.app",
+            messagingSenderId: "1060154426951",
+            appId: "1:1060154426951:web:121e08b5f1ec5323f49362",
+            measurementId: "G-97L4PN4Q0P"
+        };
+
+        // Initialize Firebase
+        let app;
+        try {
+            app = initializeApp(firebaseConfig);
+            console.log('Firebase initialized successfully at', new Date().toLocaleString());
+        } catch (error) {
+            console.error('Firebase initialization error:', error.message);
+        }
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        // Global variable to track current chart instances
+        let lineChartInstance = null;
+        let barChartInstance = null;
+
+        // Toggle between login and signup forms
+        window.toggleForm = function() {
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
+            signupForm.style.display = signupForm.style.display === 'none' ? 'block' : 'none';
+            document.getElementById('login-error').style.display = 'none';
+            document.getElementById('signup-error').style.display = 'none';
+            console.log('Toggled form to', loginForm.style.display === 'block' ? 'login' : 'signup');
+        };
+
+        // Handle Login
+        window.handleLogin = async function() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('login-error');
+
+            if (!email || !password) {
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = 'Please enter both email and password.';
+                console.log('Login failed: Empty email or password');
+                return;
+            }
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                console.log('Login successful, user:', userCredential.user.email, 'UID:', userCredential.user.uid, 'at', new Date().toLocaleString());
+            } catch (error) {
+                console.error('Login error:', error.code, error.message);
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = getFriendlyErrorMessage(error.code);
+            }
+        };
+
+        // Handle Signup
+        window.handleSignup = async function() {
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const errorDiv = document.getElementById('signup-error');
+
+            if (!email || !password) {
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = 'Please enter both email and password.';
+                console.log('Signup failed: Empty email or password');
+                return;
+            }
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                console.log('Signup successful, user:', userCredential.user.email, 'UID:', userCredential.user.uid, 'at', new Date().toLocaleString());
+                alert('Account created successfully! Please log in.');
+                toggleForm();
+            } catch (error) {
+                console.error('Signup error:', error.code, error.message);
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = getFriendlyErrorMessage(error.code);
+            }
+        };
+
+        // Handle Logout
+        window.handleLogout = async function() {
+            const loadingContainer = document.getElementById('loading-container');
+            const loginContainer = document.getElementById('login-container');
+            const dashboardContainer = document.getElementById('dashboard-container');
+
+            try {
+                loadingContainer.style.display = 'flex';
+                loginContainer.style.display = 'none';
+                dashboardContainer.style.display = 'none';
+                console.log('Initiating logout at', new Date().toLocaleString());
+
+                await signOut(auth);
+                console.log('User signed out successfully at', new Date().toLocaleString());
+
+                loadingContainer.style.display = 'none';
+                loginContainer.style.display = 'flex';
+                dashboardContainer.style.display = 'none';
+                document.getElementById('login-form').style.display = 'block';
+                document.getElementById('signup-form').style.display = 'none';
+                document.getElementById('login-error').style.display = 'none';
+                document.getElementById('signup-error').style.display = 'none';
+            } catch (error) {
+                console.error('Logout error:', error.code, error.message);
+                loadingContainer.style.display = 'none';
+                loginContainer.style.display = 'none';
+                dashboardContainer.style.display = 'flex';
+                alert('Logout failed: ' + getFriendlyErrorMessage(error.code));
+            }
+        };
+
+        // Toggle Sidebar for Mobile
+        window.toggleSidebar = function() {
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('content');
+            sidebar.classList.toggle('active');
+            content.classList.toggle('active');
+            console.log('Sidebar toggled at', new Date().toLocaleString());
+        };
+
+        // Show section-specific data in Dashboard
+        window.showSectionData = function(section) {
+            const contentBody = document.getElementById('content-body');
+            const contentTitle = document.getElementById('content-title');
+
+            // Update title to reflect selected section
+            const sectionNames = {
+                'audit-5s': 'Audit 5S',
+                'audit-gemba': 'Audit Gemba',
+                'tau-emplissage': 'TAU Emplissage',
+                'taux-absenteisme': 'Taux Absenteisme',
+                'taux-realisation-5s': 'Taux Realisation 5S',
+                'taux-realisation-gemba': 'Taux Realisation Gemba',
+                'top-action-5s': 'Top Action 5S',
+                'top-action-gemba': 'Top Action Gemba',
+                'kpi-dashboard': 'KPI Dashboard',
+                'archive': 'Archive'
+            };
+            contentTitle.textContent = `Dashboard - ${sectionNames[section] || section}`;
+
+            // Handle Top Action sections (display table)
+            if (section === 'top-action-5s' || section === 'top-action-gemba') {
+                contentBody.innerHTML = `
+                    <div class="archive-table">
+                        <h3>${sectionNames[section]} Data</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Semaine</th>
+                                    <th>Ligne</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="${section}-table-body"></tbody>
+                        </table>
+                    </div>
+                `;
+
+                onValue(ref(db, section), (snapshot) => {
+                    const tableBody = document.getElementById(`${section}-table-body`);
+                    tableBody.innerHTML = '';
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        Object.entries(data).forEach(([key, entry], index) => {
+                            const row = document.createElement('tr');
+                            row.style.setProperty('--i', index);
+                            row.innerHTML = `
+                                <td>${entry.date}</td>
+                                <td>${entry.semaine}</td>
+                                <td>${entry.ligne}</td>
+                                <td>${entry.action}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="4">No data available.</td></tr>';
+                    }
+                    console.log(`Rendered table for ${section} at`, new Date().toLocaleString());
+                }, (error) => {
+                    console.error(`Error loading data for ${section}:`, error.message);
+                    contentBody.innerHTML = `<p>Error loading data for ${sectionNames[section]}.</p>`;
+                });
+                return;
+            }
+
+            // Handle Audit sections (display charts)
+            if (section !== 'audit-5s' && section !== 'audit-gemba') {
+                contentBody.innerHTML = `<p>No chart data available for ${sectionNames[section] || section}.</p>`;
+                console.log(`No charts for section: ${section}`);
+                return;
+            }
+
+            // Render chart containers
+            contentBody.innerHTML = `
+                <div class="chart-container">
+                    <h3>${sectionNames[section]} Results (Line Chart)</h3>
+                    <canvas id="line-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>${sectionNames[section]} Results by Week (Bar Chart)</h3>
+                    <canvas id="bar-chart"></canvas>
+                </div>
+            `;
+
+            // Destroy existing chart instances to prevent overlap
+            if (lineChartInstance) lineChartInstance.destroy();
+            if (barChartInstance) barChartInstance.destroy();
+
+            // Fetch data for charts
+            onValue(ref(db, section), (snapshot) => {
+                const data = snapshot.val() || {};
+                const dates = [];
+                const results = [];
+                const weeks = {};
+                const tooltips = [];
+
+                // Process data
+                Object.values(data).forEach(entry => {
+                    dates.push(entry.date);
+                    results.push(entry.resultat);
+                    tooltips.push({
+                        ligne: entry.ligne,
+                        uap: entry.uap,
+                        date: entry.date,
+                        semaine: entry.semaine,
+                        resultat: entry.resultat
+                    });
+                    const week = `Week ${entry.semaine}`;
+                    if (!weeks[week]) weeks[week] = { total: 0, count: 0 };
+                    weeks[week].total += entry.resultat;
+                    weeks[week].count += 1;
+                });
+
+                // Prepare bar chart data (average resultat per week)
+                const weekLabels = Object.keys(weeks).sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
+                const weekResults = weekLabels.map(week => (weeks[week].total / weeks[week].count).toFixed(2));
+
+                // Line Chart with custom tooltips
+                lineChartInstance = new Chart(document.getElementById('line-chart'), {
+                    type: 'line',
+                    data: {
+                        labels: dates.sort(),
+                        datasets: [{
+                            label: `${sectionNames[section]} Percentage`,
+                            data: results,
+                            borderColor: section === 'audit-5s' ? '#3498db' : '#e74c3c',
+                            backgroundColor: section === 'audit-5s' ? 'rgba(52, 152, 219, 0.1)' : 'rgba(231, 76, 60, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { min: 0, max: 100, title: { display: true, text: 'Percentage (%)' } },
+                            x: { title: { display: true, text: 'Date' } }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const index = context.dataIndex;
+                                        const tooltipData = tooltips[index];
+                                        return [
+                                            `Résultat: ${tooltipData.resultat}%`,
+                                            `Date: ${tooltipData.date}`,
+                                            `Semaine: ${tooltipData.semaine}`,
+                                            `Ligne: ${tooltipData.ligne}`,
+                                            `UAP: ${tooltipData.uap}`
+                                        ];
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeInOutQuad'
+                        }
+                    }
+                });
+
+                // Bar Chart with custom tooltips
+                barChartInstance = new Chart(document.getElementById('bar-chart'), {
+                    type: 'bar',
+                    data: {
+                        labels: weekLabels,
+                        datasets: [{
+                            label: `${sectionNames[section]} Average Percentage`,
+                            data: weekResults,
+                            backgroundColor: section === 'audit-5s' ? '#3498db' : '#e74c3c'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { min: 0, max: 100, title: { display: true, text: 'Average Percentage (%)' } },
+                            x: { title: { display: true, text: 'Week' } }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Average Résultat: ${context.raw}%`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeInOutQuad'
+                        }
+                    }
+                });
+
+                console.log(`Rendered charts for ${section}:`, { dates, results, weekLabels, weekResults }, 'at', new Date().toLocaleString());
+            }, (error) => {
+                console.error(`Error loading data for ${section}:`, error.message);
+                contentBody.innerHTML = `<p>Error loading chart data for ${sectionNames[section]}.</p>`;
+            });
+        };
+
+        // Show content and manage navbar/form/visualizations
+        window.showContent = function(section) {
+            const contentTitle = document.getElementById('content-title');
+            const contentBody = document.getElementById('content-body');
+            const navbar = document.getElementById('navbar');
+            const navbarList = document.getElementById('navbar-list');
+            const sidebarItems = document.querySelectorAll('.sidebar li');
+
+            // Remove active class from all sidebar items
+            sidebarItems.forEach(item => item.classList.remove('active'));
+            const activeItem = Array.from(sidebarItems).find(item => item.getAttribute('onclick') === `showContent('${section}')`);
+            if (activeItem) {
+                activeItem.classList.add('active');
+            }
+
+            // Define all sections
+            const sections = [
+                { id: 'kpi-dashboard', name: 'KPI Dashboard' },
+                { id: 'dashboard', name: 'Dashboard' },
+                { id: 'audit-5s', name: 'Audit 5S' },
+                { id: 'audit-gemba', name: 'Audit Gemba' },
+                { id: 'tau-emplissage', name: 'TAU Emplissage' },
+                { id: 'taux-absenteisme', name: 'Taux Absenteisme' },
+                { id: 'taux-realisation-5s', name: 'Taux Realisation 5S' },
+                { id: 'taux-realisation-gemba', name: 'Taux Realisation Gemba' },
+                { id: 'top-action-5s', name: 'Top Action 5S' },
+                { id: 'top-action-gemba', name: 'Top Action Gemba' },
+                { id: 'archive', name: 'Archive' }
+            ];
+
+            // Update navbar content
+            navbarList.innerHTML = '';
+            let navbarItems = [];
+            if (section === 'archive') {
+                navbarItems = sections;
+            } else if (section === 'dashboard') {
+                navbarItems = sections.filter(s => s.id !== 'dashboard' && s.id !== 'archive');
+            }
+
+            if (section === 'dashboard' || section === 'archive') {
+                navbar.style.display = 'flex';
+                navbarItems.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = item.name;
+                    li.style.setProperty('--i', index);
+                    li.onclick = () => {
+                        if (section === 'dashboard') {
+                            showSectionData(item.id);
+                        } else {
+                            showContent(item.id);
+                        }
+                    };
+                    navbarList.appendChild(li);
+                });
+            } else {
+                navbar.style.display = 'none';
+            }
+
+            // Update content
+            contentTitle.textContent = sections.find(s => s.id === section)?.name || 'KPI Dashboard';
+            contentBody.innerHTML = '';
+
+            const forms = {
+                'audit-5s': `
+                    <form id="audit-5s-form">
+                        <div class="form-group">
+                            <label for="audit-5s-date">Date</label>
+                            <input type="date" id="audit-5s-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="audit-5s-ligne">Ligne</label>
+                            <input type="text" id="audit-5s-ligne" placeholder="Enter Ligne" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="audit-5s-uap">UAP</label>
+                            <input type="text" id="audit-5s-uap" placeholder="Enter UAP" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="audit-5s-semaine">Semaine</label>
+                            <input type="number" id="audit-5s-semaine" placeholder="Enter Semaine" min="1" max="52" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="audit-5s-resultat">Résultat par pourcentage</label>
+                            <input type="number" id="audit-5s-resultat" placeholder="Enter percentage" min="0" max="100" required>
+                        </div>
+                        <button type="submit" onclick="submitForm('audit-5s')">Submit</button>
+                        <div class="success" id="audit-5s-success"></div>
+                        <div class="error" id="audit-5s-error"></div>
+                    </form>
+                `,
+                'audit-gemba': `
+                    <form id="audit-gemba-form">
+                        <div class="form-group">
+                            <label for="audit-gemba-date">Date</label>
+                            <input type="date" id="audit-gemba-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="audit-gemba-ligne">Ligne</label>
+                            <input type="text" id="audit-gemba-ligne" placeholder="Enter Ligne" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="audit-gemba-uap">UAP</label>
+                            <input type="text" id="audit-gemba-uap" placeholder="Enter UAP" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="audit-gemba-semaine">Semaine</label>
+                            <input type="number" id="audit-gemba-semaine" placeholder="Enter Semaine" min="1" max="52" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="audit-gemba-resultat">Résultat par pourcentage</label>
+                            <input type="number" id="audit-gemba-resultat" placeholder="Enter percentage" min="0" max="100" required>
+                        </div>
+                        <button type="submit" onclick="submitForm('audit-gemba')">Submit</button>
+                        <div class="success" id="audit-gemba-success"></div>
+                        <div class="error" id="audit-gemba-error"></div>
+                    </form>
+                `,
+                'tau-emplissage': `
+                    <form id="tau-emplissage-form">
+                        <div class="form-group">
+                            <label for="tau-emplissage-date">Date</label>
+                            <input type="date" id="tau-emplissage-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tau-emplissage-uap">UAP</label>
+                            <input type="text" id="tau-emplissage-uap" placeholder="Enter UAP" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tau-emplissage-week">Week</label>
+                            <input type="number" id="tau-emplissage-week" placeholder="Enter Week" min="1" max="52" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tau-emplissage-resultat">Résultat</label>
+                            <input type="text" id="tau-emplissage-resultat" placeholder="Enter Résultat" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tau-emplissage-commentaire">Commentaire</label>
+                            <textarea id="tau-emplissage-commentaire" placeholder="Enter Commentaire"></textarea>
+                        </div>
+                        <button type="submit" onclick="submitForm('tau-emplissage')">Submit</button>
+                        <div class="success" id="tau-emplissage-success"></div>
+                        <div class="error" id="tau-emplissage-error"></div>
+                    </form>
+                `,
+                'taux-absenteisme': `
+                    <form id="taux-absenteisme-form">
+                        <div class="form-group">
+                            <label for="taux-absenteisme-date">Date</label>
+                            <input type="date" id="taux-absenteisme-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-absenteisme-week">Week</label>
+                            <input type="number" id="taux-absenteisme-week" placeholder="Enter Week" min="1" max="52" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-absenteisme-auditeur">Nom Auditeur</label>
+                            <input type="text" id="taux-absenteisme-auditeur" placeholder="Enter Nom Auditeur" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-absenteisme-statut">Statut</label>
+                            <select id="taux-absenteisme-statut" required>
+                                <option value="Présent">Présent</option>
+                                <option value="Absence">Absence</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-absenteisme-commentaire">Commentaire</label>
+                            <textarea id="taux-absenteisme-commentaire" placeholder="Enter Commentaire"></textarea>
+                        </div>
+                        <button type="submit" onclick="submitForm('taux-absenteisme')">Submit</button>
+                        <div class="success" id="taux-absenteisme-success"></div>
+                        <div class="error" id="taux-absenteisme-error"></div>
+                    </form>
+                `,
+                'taux-realisation-5s': `
+                    <form id="taux-realisation-5s-form">
+                        <div class="form-group">
+                            <label for="taux-realisation-5s-date">Date</label>
+                            <input type="date" id="taux-realisation-5s-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-realisation-5s-week">Week</label>
+                            <input type="number" id="taux-realisation-5s-week" placeholder="Enter Week" min="1" max="52" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-realisation-5s-planifie">Nombre Audite Planifié</label>
+                            <input type="number" id="taux-realisation-5s-planifie" placeholder="Enter Nombre Planifié" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-realisation-5s-realise">Nombre Audite Réalisé</label>
+                            <input type="number" id="taux-realisation-5s-realise" placeholder="Enter Nombre Réalisé" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-realisation-5s-commentaire">Commentaire</label>
+                            <textarea id="taux-realisation-5s-commentaire" placeholder="Enter Commentaire"></textarea>
+                        </div>
+                        <button type="submit" onclick="submitForm('taux-realisation-5s')">Submit</button>
+                        <div class="success" id="taux-realisation-5s-success"></div>
+                        <div class="error" id="taux-realisation-5s-error"></div>
+                    </form>
+                `,
+                'taux-realisation-gemba': `
+                    <form id="taux-realisation-gemba-form">
+                        <div class="form-group">
+                            <label for="taux-realisation-gemba-date">Date</label>
+                            <input type="date" id="taux-realisation-gemba-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-realisation-gemba-week">Week</label>
+                            <input type="number" id="taux-realisation-gemba-week" placeholder="Enter Week" min="1" max="52" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-realisation-gemba-planifie">Nombre Audite Planifié</label>
+                            <input type="number" id="taux-realisation-gemba-planifie" placeholder="Enter Nombre Planifié" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-realisation-gemba-realise">Nombre Audite Réalisé</label>
+                            <input type="number" id="taux-realisation-gemba-realise" placeholder="Enter Nombre Réalisé" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taux-realisation-gemba-commentaire">Commentaire</label>
+                            <textarea id="taux-realisation-gemba-commentaire" placeholder="Enter Commentaire"></textarea>
+                        </div>
+                        <button type="submit" onclick="submitForm('taux-realisation-gemba')">Submit</button>
+                        <div class="success" id="taux-realisation-gemba-success"></div>
+                        <div class="error" id="taux-realisation-gemba-error"></div>
+                    </form>
+                `,
+                'top-action-5s': `
+                    <form id="top-action-5s-form">
+                        <div class="form-group">
+                            <label for="top-action-5s-date">Date</label>
+                            <input type="date" id="top-action-5s-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="top-action-5s-semaine">Semaine</label>
+                            <input type="number" id="top-action-5s-semaine" placeholder="Enter Semaine" min="1" max="52" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="top-action-5s-ligne">Ligne</label>
+                            <input type="text" id="top-action-5s-ligne" placeholder="Enter Ligne" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="top-action-5s-action">Action</label>
+                            <textarea id="top-action-5s-action" placeholder="Enter Action" required></textarea>
+                        </div>
+                        <button type="submit" onclick="submitForm('top-action-5s')">Submit</button>
+                        <div class="success" id="top-action-5s-success"></div>
+                        <div class="error" id="top-action-5s-error"></div>
+                    </form>
+                `,
+                'top-action-gemba': `
+                    <form id="top-action-gemba-form">
+                        <div class="form-group">
+                            <label for="top-action-gemba-date">Date</label>
+                            <input type="date" id="top-action-gemba-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="top-action-gemba-semaine">Semaine</label>
+                            <input type="number" id="top-action-gemba-semaine" placeholder="Enter Semaine" min="1" max="52" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="top-action-gemba-ligne">Ligne</label>
+                            <input type="text" id="top-action-gemba-ligne" placeholder="Enter Ligne" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="top-action-gemba-action">Action</label>
+                            <textarea id="top-action-gemba-action" placeholder="Enter Action" required></textarea>
+                        </div>
+                        <button type="submit" onclick="submitForm('top-action-gemba')">Submit</button>
+                        <div class="success" id="top-action-gemba-success"></div>
+                        <div class="error" id="top-action-gemba-error"></div>
+                    </form>
+                `,
+                'archive': `
+                    <div class="archive-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Section</th>
+                                    <th>Date</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="archive-table-body"></tbody>
+                        </table>
+                    </div>
+                    <button id="export-archive" onclick="exportToExcel('archive-table-body', 'archive-data')">Export to Excel</button>
+                `,
+                'dashboard': `
+                    <p>Select a section from the navbar to view data.</p>
+                `
+            };
+
+            contentBody.innerHTML = forms[section] || `<p>This is the ${contentTitle.textContent} section. Add your specific content here.</p>`;
+
+            // Load archive data
+            if (section === 'archive') {
+                onValue(ref(db, 'archive'), (snapshot) => {
+                    const tableBody = document.getElementById('archive-table-body');
+                    tableBody.innerHTML = '';
+                    if (snapshot.exists()) {
+                        const data = snapshot.val();
+                        Object.entries(data).forEach(([key, entry], index) => {
+                            const row = document.createElement('tr');
+                            row.style.setProperty('--i', index);
+                            const details = Object.entries(entry)
+                                .filter(([k]) => k !== 'timestamp' && k !== 'userId' && k !== 'section')
+                                .map(([k, v]) => `${k}: ${v}`).join(', ');
+                            row.innerHTML = `
+                                <td>${entry.section}</td>
+                                <td>${new Date(entry.timestamp).toLocaleDateString()}</td>
+                                <td>${details}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="3">No archived data available.</td></tr>';
+                    }
+                }, (error) => {
+                    console.error('Error loading archive:', error.message);
+                    document.getElementById('archive-table-body').innerHTML = '<tr><td colspan="3">Error loading data.</td></tr>';
+                });
+            }
+
+            console.log('Content updated to section:', section, 'Navbar items:', navbarItems.map(i => i.name), 'at', new Date().toLocaleString());
+
+            // Close sidebar on mobile after selection
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('active');
+                document.getElementById('content').classList.remove('active');
+            }
+        };
+
+        // Export table to Excel (CSV format)
+        window.exportToExcel = function(tableId, fileName) {
+            const table = document.getElementById(tableId);
+            const rows = Array.from(table.rows);
+            const csvContent = rows.map(row => Array.from(row.cells).map(cell => `"${cell.innerText.replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${fileName}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+            console.log(`Exported table to ${fileName}.csv at`, new Date().toLocaleString());
+        };
+
+        // Submit form data to Firebase
+        window.submitForm = async function(section) {
+            const form = document.getElementById(`${section}-form`);
+            const successDiv = document.getElementById(`${section}-success`);
+            const errorDiv = document.getElementById(`${section}-error`);
+
+            event.preventDefault();
+
+            let data = {};
+            let isValid = true;
+
+            if (section === 'audit-5s' || section === 'audit-gemba') {
+                data = {
+                    date: document.getElementById(`${section}-date`).value,
+                    ligne: document.getElementById(`${section}-ligne`).value,
+                    uap: document.getElementById(`${section}-uap`).value,
+                    semaine: parseInt(document.getElementById(`${section}-semaine`).value),
+                    resultat: parseFloat(document.getElementById(`${section}-resultat`).value)
+                };
+                if (data.resultat < 0 || data.resultat > 100) {
+                    isValid = false;
+                    errorDiv.style.display = 'block';
+                    errorDiv.textContent = 'Résultat must be between 0 and 100.';
+                }
+            } else if (section === 'tau-emplissage') {
+                data = {
+                    date: document.getElementById(`${section}-date`).value,
+                    uap: document.getElementById(`${section}-uap`).value,
+                    week: parseInt(document.getElementById(`${section}-week`).value),
+                    resultat: document.getElementById(`${section}-resultat`).value,
+                    commentaire: document.getElementById(`${section}-commentaire`).value
+                };
+            } else if (section === 'taux-absenteisme') {
+                data = {
+                    date: document.getElementById(`${section}-date`).value,
+                    week: parseInt(document.getElementById(`${section}-week`).value),
+                    auditeur: document.getElementById(`${section}-auditeur`).value,
+                    statut: document.getElementById(`${section}-statut`).value,
+                    commentaire: document.getElementById(`${section}-commentaire`).value
+                };
+            } else if (section === 'taux-realisation-5s' || section === 'taux-realisation-gemba') {
+                data = {
+                    date: document.getElementById(`${section}-date`).value,
+                    week: parseInt(document.getElementById(`${section}-week`).value),
+                    planifie: parseInt(document.getElementById(`${section}-planifie`).value),
+                    realise: parseInt(document.getElementById(`${section}-realise`).value),
+                    commentaire: document.getElementById(`${section}-commentaire`).value
+                };
+                if (data.realise > data.planifie) {
+                    isValid = false;
+                    errorDiv.style.display = 'block';
+                    errorDiv.textContent = 'Nombre Réalisé cannot exceed Nombre Planifié.';
+                }
+            } else if (section === 'top-action-5s' || section === 'top-action-gemba') {
+                data = {
+                    date: document.getElementById(`${section}-date`).value,
+                    semaine: parseInt(document.getElementById(`${section}-semaine`).value),
+                    ligne: document.getElementById(`${section}-ligne`).value,
+                    action: document.getElementById(`${section}-action`).value
+                };
+            }
+
+            for (let key in data) {
+                if (!data[key] && key !== 'commentaire') {
+                    isValid = false;
+                    errorDiv.style.display = 'block';
+                    errorDiv.textContent = 'Please fill all required fields.';
+                    break;
+                }
+            }
+
+            if (!isValid) {
+                console.log(`Form submission failed for ${section}: Validation error`);
+                return;
+            }
+
+            try {
+                // Save to section-specific path
+                const dataRef = ref(db, section);
+                const newEntry = push(dataRef);
+                await set(newEntry, {
+                    ...data,
+                    timestamp: Date.now(),
+                    userId: auth.currentUser?.uid
+                });
+
+                // Save to archive
+                const archiveRef = ref(db, 'archive');
+                const archiveEntry = push(archiveRef);
+                await set(archiveEntry, {
+                    ...data,
+                    section,
+                    timestamp: Date.now(),
+                    userId: auth.currentUser?.uid
+                });
+
+                successDiv.style.display = 'block';
+                successDiv.textContent = 'Data submitted successfully!';
+                errorDiv.style.display = 'none';
+                form.reset();
+                console.log(`Form submitted for ${section} and archived:`, data, 'at', new Date().toLocaleString());
+            } catch (error) {
+                console.error(`Form submission error for ${section}:`, error.code, error.message);
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = getFriendlyErrorMessage(error.code);
+                successDiv.style.display = 'none';
+            }
+        };
+
+        // Friendly error messages for Firebase errors
+        function getFriendlyErrorMessage(errorCode) {
+            const errorMessages = {
+                'auth/invalid-email': 'The email address is not valid.',
+                'auth/user-not-found': 'No user found with this email.',
+                'auth/wrong-password': 'Incorrect password. Please try again.',
+                'auth/email-already-in-use': 'This email is already registered.',
+                'auth/weak-password': 'Password is too weak. Use at least 6 characters.',
+                'auth/network-request-failed': 'Network error. Please check your connection.',
+                'auth/invalid-credential': 'Invalid credentials. Please check your email and password.',
+                'auth/too-many-requests': 'Too many attempts. Please try again later.',
+                'database/permission-denied': 'Permission denied. Ensure you are authenticated and database rules allow access.'
+            };
+            return errorMessages[errorCode] || 'An error occurred. Please try again.';
+        }
+
+        // Monitor auth state
+        onAuthStateChanged(auth, (user) => {
+            const loadingContainer = document.getElementById('loading-container');
+            const loginContainer = document.getElementById('login-container');
+            const dashboardContainer = document.getElementById('dashboard-container');
+
+            if (user) {
+                console.log('User is signed in:', user.email, 'UID:', user.uid, 'at', new Date().toLocaleString());
+                loadingContainer.style.display = 'none';
+                loginContainer.style.display = 'none';
+                dashboardContainer.style.display = 'flex';
+                showContent('kpi-dashboard');
+            } else {
+                console.log('No user is signed in at', new Date().toLocaleString());
+                loadingContainer.style.display = 'none';
+                loginContainer.style.display = 'flex';
+                dashboardContainer.style.display = 'none';
+                document.getElementById('login-form').style.display = 'block';
+                document.getElementById('signup-form').style.display = 'none';
+            }
+        });
+
+        // Initialize page state
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Page loaded at', new Date().toLocaleString());
+            const loadingContainer = document.getElementById('loading-container');
+            const loginContainer = document.getElementById('login-container');
+            const dashboardContainer = document.getElementById('dashboard-container');
+            loadingContainer.style.display = 'flex';
+            loginContainer.style.display = 'none';
+            dashboardContainer.style.display = 'none';
+            console.log('Initial state: showing loading container');
+        });
+    </script>
 </body>
 </html>
-
