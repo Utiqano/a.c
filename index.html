@@ -800,541 +800,615 @@
         };
 
         // Show section-specific data in Dashboard
-window.showSectionData = function(section) {
-    const contentBody = document.getElementById('content-body');
-    const contentTitle = document.getElementById('content-title');
+        window.showSectionData = function(section) {
+            const contentBody = document.getElementById('content-body');
+            const contentTitle = document.getElementById('content-title');
 
-    // Update title to reflect selected section
-    const sectionNames = {
-        'audit-5s': 'Audit 5S',
-        'audit-gemba': 'Audit Gemba',
-        'tau-emplissage': 'TAU Emplissage',
-        'taux-absenteisme': 'Taux Absenteisme',
-        'taux-realisation-5s': 'Taux Realisation 5S',
-        'taux-realisation-gemba': 'Taux Realisation Gemba',
-        'top-action-5s': 'Top Action 5S',
-        'top-action-gemba': 'Top Action Gemba',
-        'kpi-dashboard': 'KPI Dashboard',
-        'archive': 'Archive'
-    };
-    contentTitle.textContent = `Dashboard - ${sectionNames[section] || section}`;
+            // Update title to reflect selected section
+            const sectionNames = {
+                'audit-5s': 'Audit 5S',
+                'audit-gemba': 'Audit Gemba',
+                'tau-emplissage': 'TAU Emplissage',
+                'taux-absenteisme': 'Taux Absenteisme',
+                'taux-realisation-5s': 'Taux Realisation 5S',
+                'taux-realisation-gemba': 'Taux Realisation Gemba',
+                'top-action-5s': 'Top Action 5S',
+                'top-action-gemba': 'Top Action Gemba',
+                'kpi-dashboard': 'KPI Dashboard',
+                'archive': 'Archive'
+            };
+            contentTitle.textContent = `Dashboard - ${sectionNames[section] || section}`;
 
-    // Render filter form with loading state
-    contentBody.innerHTML = `
-        <form id="filter-form" class="filter-form">
-            <div class="form-group">
-                <label for="filter-uap">UAP</label>
-                <input type="text" id="filter-uap" placeholder="Enter UAP">
-            </div>
-            <div class="form-group">
-                <label for="filter-date-start">Date Start</label>
-                <input type="date" id="filter-date-start">
-            </div>
-            <div class="form-group">
-                <label for="filter-date-end">Date End</label>
-                <input type="date" id="filter-date-end">
-            </div>
-            <div class="form-group">
-                <label for="filter-week">Week</label>
-                <input type="number" id="filter-week" placeholder="Enter Week" min="1" max="52">
-            </div>
-            <div class="form-group">
-                <label for="filter-ligne">Ligne</label>
-                <input type="text" id="filter-ligne" placeholder="Enter Ligne">
-            </div>
-            <div class="filter-buttons">
-                <button type="button" id="apply-filters" onclick="applyFiltersAndRender('${section}')">Apply Filters</button>
-                <button type="button" id="clear-filters" onclick="clearFilters('${section}')">Clear Filters</button>
-            </div>
-        </form>
-        <div id="filter-loading" class="spinner" style="display: none;"></div>
-        <div id="data-container"></div>
-    `;
+            // Render filter form
+            contentBody.innerHTML = `
+                <form id="filter-form" class="filter-form">
+                    <div class="form-group">
+                        <label for="filter-uap">UAP</label>
+                        <input type="text" id="filter-uap" placeholder="Enter UAP">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-date-start">Date Start</label>
+                        <input type="date" id="filter-date-start">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-date-end">Date End</label>
+                        <input type="date" id="filter-date-end">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-week">Week</label>
+                        <input type="number" id="filter-week" placeholder="Enter Week" min="1" max="52">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-ligne">Ligne</label>
+                        <input type="text" id="filter-ligne" placeholder="Enter Ligne">
+                    </div>
+                    <div class="filter-buttons">
+                        <button type="button" onclick="showSectionData('${section}')">Apply Filters</button>
+                        <button type="button" id="clear-filters" onclick="clearFilters('${section}')">Clear Filters</button>
+                    </div>
+                </form>
+            `;
 
-    // Initial render
-    renderSectionData(section);
-};
+            // Handle Top Action sections (display table)
+            if (section === 'top-action-5s' || section === 'top-action-gemba') {
+                contentBody.innerHTML += `
+                    <div class="archive-table">
+                        <h3>${sectionNames[section]} Data</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Semaine</th>
+                                    <th>Ligne</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="${section}-table-body"></tbody>
+                        </table>
+                    </div>
+                `;
 
-window.applyFiltersAndRender = function(section) {
-    const applyButton = document.getElementById('apply-filters');
-    const loadingSpinner = document.getElementById('filter-loading');
-    
-    console.log(`Apply Filters button clicked for section: ${section}`);
-    applyButton.disabled = true;
-    applyButton.innerHTML = 'Applying...';
-    loadingSpinner.style.display = 'block';
-    
-    setTimeout(() => {
-        console.log(`Rendering data for ${section} after filter application`);
-        renderSectionData(section);
-        applyButton.disabled = false;
-        applyButton.innerHTML = 'Apply Filters';
-        loadingSpinner.style.display = 'none';
-    }, 100);
-};
-
-// Function to render section data
-function renderSectionData(section) {
-    const contentBody = document.getElementById('data-container');
-    const sectionNames = {
-        'audit-5s': 'Audit 5S',
-        'audit-gemba': 'Audit Gemba',
-        'tau-emplissage': 'TAU Emplissage',
-        'taux-absenteisme': 'Taux Absenteisme',
-        'taux-realisation-5s': 'Taux Realisation 5S',
-        'taux-realisation-gemba': 'Taux Realisation Gemba',
-        'top-action-5s': 'Top Action 5S',
-        'top-action-gemba': 'Top Action Gemba'
-    };
-
-    // Handle Top Action sections (display table)
-    if (section === 'top-action-5s' || section === 'top-action-gemba') {
-        contentBody.innerHTML = `
-            <div class="archive-table">
-                <h3>${sectionNames[section]} Data</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Semaine</th>
-                            <th>Ligne</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="${section}-table-body"></tbody>
-                </table>
-            </div>
-        `;
-
-        onValue(ref(db, section), (snapshot) => {
-            const tableBody = document.getElementById(`${section}-table-body`);
-            tableBody.innerHTML = '';
-            let data = snapshot.val() || {};
-            data = applyFilters(section, data);
-            console.log(`Filtered data for ${section}:`, data);
-            if (Object.keys(data).length > 0) {
-                Object.entries(data).forEach(([key, entry], index) => {
-                    const row = document.createElement('tr');
-                    row.style.setProperty('--i', index);
-                    row.innerHTML = `
-                        <td>${entry.date || 'N/A'}</td>
-                        <td>${entry.semaine || entry.week || 'N/A'}</td>
-                        <td>${entry.ligne || 'N/A'}</td>
-                        <td>${entry.action || 'N/A'}</td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            } else {
-                tableBody.innerHTML = '<tr><td colspan="4">No data matches the filters.</td></tr>';
-            }
-            console.log(`Rendered table for ${section} with ${Object.keys(data).length} rows at`, new Date().toLocaleString());
-        }, (error) => {
-            console.error(`Error loading data for ${section}:`, error.message);
-            contentBody.innerHTML = `<p>Error loading data for ${sectionNames[section]}.</p>`;
-        });
-        return;
-    }
-
-    // Handle TAU Emplissage (Bar Chart by Week and UAP)
-    if (section === 'tau-emplissage') {
-        contentBody.innerHTML = `
-            <div class="chart-container">
-                <h3>${sectionNames[section]} Results by Week and UAP (Bar Chart)</h3>
-                <div class="spinner" id="chart-spinner"></div>
-                <canvas id="bar-chart"></canvas>
-            </div>
-        `;
-
-        if (barChartInstance) barChartInstance.destroy();
-
-        onValue(ref(db, section), (snapshot) => {
-            document.getElementById('chart-spinner').style.display = 'none';
-            let data = snapshot.val() || {};
-            data = applyFilters(section, data);
-            console.log(`Filtered data for ${section}:`, data);
-
-            const weeks = {};
-            const uaps = new Set();
-            const tooltips = [];
-
-            Object.values(data).forEach(entry => {
-                if (entry.week && entry.uap && entry.resultat != null) {
-                    const week = `Week ${entry.week}`;
-                    if (!weeks[week]) weeks[week] = {};
-                    weeks[week][entry.uap] = (weeks[week][entry.uap] || 0) + parseFloat(entry.resultat);
-                    uaps.add(entry.uap);
-                    tooltips.push({
-                        week: entry.week,
-                        uap: entry.uap,
-                        resultat: entry.resultat,
-                        date: entry.date || 'N/A',
-                        commentaire: entry.commentaire || 'N/A'
-                    });
-                }
-            });
-
-            const weekLabels = Object.keys(weeks).sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
-            const uapList = Array.from(uaps);
-            const datasets = uapList.map((uap, index) => ({
-                label: uap,
-                data: weekLabels.map(week => weeks[week][uap] || 0),
-                backgroundColor: `hsl(${index * 360 / uapList.length}, 70%, 50%)`
-            }));
-
-            if (weekLabels.length === 0) {
-                contentBody.innerHTML = `<p>No data matches the filters.</p>`;
-                console.log(`No data for ${section} after filtering at`, new Date().toLocaleString());
-                return;
-            }
-
-            barChartInstance = new Chart(document.getElementById('bar-chart'), {
-                type: 'bar',
-                data: {
-                    labels: weekLabels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: { min: 0, max: 100, title: { display: true, text: 'Percentage (%)' } },
-                        x: { title: { display: true, text: 'Week' } }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const index = context.dataIndex;
-                                    const uap = context.dataset.label;
-                                    const tooltipData = tooltips.find(t => t.week === context.label.split(' ')[1] && t.uap === uap);
-                                    return [
-                                        `UAP: ${uap}`,
-                                        `Résultat: ${context.raw}%`,
-                                        `Week: ${context.label}`,
-                                        `Date: ${tooltipData?.date || 'N/A'}`,
-                                        `Commentaire: ${tooltipData?.commentaire || 'N/A'}`
-                                    ];
-                                }
-                            }
-                        }
-                    },
-                    animation: {
-                        duration: 1000,
-                        easing: 'easeInOutQuad'
+                onValue(ref(db, section), (snapshot) => {
+                    const tableBody = document.getElementById(`${section}-table-body`);
+                    tableBody.innerHTML = '';
+                    let data = snapshot.val() || {};
+                    data = applyFilters(section, data);
+                    console.log(`Filtered data for ${section}:`, data);
+                    if (Object.keys(data).length > 0) {
+                        Object.entries(data).forEach(([key, entry], index) => {
+                            const row = document.createElement('tr');
+                            row.style.setProperty('--i', index);
+                            row.innerHTML = `
+                                <td>${entry.date || 'N/A'}</td>
+                                <td>${entry.semaine || entry.week || 'N/A'}</td>
+                                <td>${entry.ligne || 'N/A'}</td>
+                                <td>${entry.action || 'N/A'}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="4">No data matches the filters.</td></tr>';
                     }
-                }
-            });
-            console.log(`Rendered bar chart for ${section} with ${weekLabels.length} weeks and ${uapList.length} UAPs at`, new Date().toLocaleString());
-        }, (error) => {
-            console.error(`Error loading data for ${section}:`, error.message);
-            contentBody.innerHTML = `<p>Error loading chart data for ${sectionNames[section]}.</p>`;
-        });
-        return;
-    }
-
-    // Handle Taux Absenteisme (Table with Percentage)
-    if (section === 'taux-absenteisme') {
-        contentBody.innerHTML = `
-            <div class="archive-table">
-                <h3>${sectionNames[section]} Data</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Auditeur</th>
-                            <th>Statut</th>
-                            <th>Week</th>
-                            <th>Percentage (%)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="taux-absenteisme-table-body"></tbody>
-                </table>
-            </div>
-        `;
-
-        onValue(ref(db, section), (snapshot) => {
-            const tableBody = document.getElementById('taux-absenteisme-table-body');
-            tableBody.innerHTML = '';
-            let data = snapshot.val() || {};
-            data = applyFilters(section, data);
-            console.log(`Filtered data for ${section}:`, data);
-
-            const weeks = {};
-            Object.values(data).forEach(entry => {
-                if (entry.week && entry.auditeur && entry.statut) {
-                    const week = `Week ${entry.week}`;
-                    if (!weeks[week]) weeks[week] = {};
-                    if (!weeks[week][entry.auditeur]) weeks[week][entry.auditeur] = { present: 0, total: 0 };
-                    weeks[week][entry.auditeur].total += 1;
-                    if (entry.statut === 'Présent') weeks[week][entry.auditeur].present += 1;
-                }
-            });
-
-            if (Object.keys(weeks).length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4">No data matches the filters.</td></tr>';
-                console.log(`No data for ${section} after filtering at`, new Date().toLocaleString());
-                return;
-            }
-
-            Object.entries(weeks).forEach(([week, auditors], index) => {
-                Object.entries(auditors).forEach(([auditeur, stats]) => {
-                    const percentage = stats.total > 0 ? ((stats.present / stats.total) * 100).toFixed(2) : 0;
-                    const row = document.createElement('tr');
-                    row.style.setProperty('--i', index);
-                    row.innerHTML = `
-                        <td>${auditeur}</td>
-                        <td>${stats.present}/${stats.total} Présent</td>
-                        <td>${week}</td>
-                        <td>${percentage}%</td>
-                    `;
-                    tableBody.appendChild(row);
+                    console.log(`Rendered table for ${section} with ${Object.keys(data).length} rows at`, new Date().toLocaleString());
+                }, (error) => {
+                    console.error(`Error loading data for ${section}:`, error.message);
+                    contentBody.innerHTML = `<p>Error loading data for ${sectionNames[section]}.</p>`;
                 });
-            });
-            console.log(`Rendered table for ${section} with ${Object.keys(weeks).length} weeks at`, new Date().toLocaleString());
-        }, (error) => {
-            console.error(`Error loading data for ${section}:`, error.message);
-            contentBody.innerHTML = `<p>Error loading data for ${sectionNames[section]}.</p>`;
-        });
-        return;
-    }
-
-    // Handle Taux Realisation 5S and Taux Realisation Gemba (Bar Chart)
-    if (section === 'taux-realisation-5s' || section === 'taux-realisation-gemba') {
-        contentBody.innerHTML = `
-            <div class="chart-container">
-                <h3>${sectionNames[section]} Results by Week (Bar Chart)</h3>
-                <div class="spinner" id="chart-spinner"></div>
-                <canvas id="bar-chart"></canvas>
-            </div>
-        `;
-
-        if (barChartInstance) barChartInstance.destroy();
-
-        onValue(ref(db, section), (snapshot) => {
-            document.getElementById('chart-spinner').style.display = 'none';
-            let data = snapshot.val() || {};
-            data = applyFilters(section, data);
-            console.log(`Filtered data for ${section}:`, data);
-
-            const weeks = {};
-            const tooltips = [];
-
-            Object.values(data).forEach(entry => {
-                if (entry.week && entry.planifie != null && entry.realise != null) {
-                    const week = `Week ${entry.week}`;
-                    if (!weeks[week]) weeks[week] = { planifie: 0, realise: 0, count: 0 };
-                    weeks[week].planifie += parseInt(entry.planifie);
-                    weeks[week].realise += parseInt(entry.realise);
-                    weeks[week].count += 1;
-                    tooltips.push({
-                        week: entry.week,
-                        planifie: entry.planifie,
-                        realise: entry.realise,
-                        date: entry.date || 'N/A',
-                        commentaire: entry.commentaire || 'N/A'
-                    });
-                }
-            });
-
-            const weekLabels = Object.keys(weeks).sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
-            const planifieData = weekLabels.map(week => weeks[week].count > 0 ? weeks[week].planifie / weeks[week].count : 0);
-            const realiseData = weekLabels.map(week => weeks[week].count > 0 ? weeks[week].realise / weeks[week].count : 0);
-
-            if (weekLabels.length === 0) {
-                contentBody.innerHTML = `<p>No data matches the filters.</p>`;
-                console.log(`No data for ${section} after filtering at`, new Date().toLocaleString());
                 return;
             }
 
-            barChartInstance = new Chart(document.getElementById('bar-chart'), {
-                type: 'bar',
-                data: {
-                    labels: weekLabels,
-                    datasets: [
-                        {
-                            label: 'Nombre Audite Planifié',
-                            data: planifieData,
-                            backgroundColor: '#3498db'
+            // Handle TAU Emplissage (Bar Chart by Week and UAP)
+            if (section === 'tau-emplissage') {
+                contentBody.innerHTML += `
+                    <div class="chart-container">
+                        <h3>${sectionNames[section]} Results by Week and UAP (Bar Chart)</h3>
+                        <div class="spinner" id="chart-spinner"></div>
+                        <canvas id="bar-chart"></canvas>
+                    </div>
+                `;
+
+                if (barChartInstance) barChartInstance.destroy();
+
+                onValue(ref(db, section), (snapshot) => {
+                    document.getElementById('chart-spinner').style.display = 'none';
+                    let data = snapshot.val() || {};
+                    data = applyFilters(section, data);
+                    console.log(`Filtered data for ${section}:`, data);
+
+                    const weeks = {};
+                    const uaps = new Set();
+                    const tooltips = [];
+
+                    Object.values(data).forEach(entry => {
+                        if (entry.week && entry.uap && entry.resultat != null) {
+                            const week = `Week ${entry.week}`;
+                            if (!weeks[week]) weeks[week] = {};
+                            weeks[week][entry.uap] = (weeks[week][entry.uap] || 0) + parseFloat(entry.resultat);
+                            uaps.add(entry.uap);
+                            tooltips.push({
+                                week: entry.week,
+                                uap: entry.uap,
+                                resultat: entry.resultat,
+                                date: entry.date || 'N/A',
+                                commentaire: entry.commentaire || 'N/A'
+                            });
+                        }
+                    });
+
+                    const weekLabels = Object.keys(weeks).sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
+                    const uapList = Array.from(uaps);
+                    const datasets = uapList.map((uap, index) => ({
+                        label: uap,
+                        data: weekLabels.map(week => weeks[week][uap] || 0),
+                        backgroundColor: `hsl(${index * 360 / uapList.length}, 70%, 50%)`
+                    }));
+
+                    if (weekLabels.length === 0) {
+                        contentBody.innerHTML = `
+                            <form id="filter-form" class="filter-form">
+                                <div class="form-group">
+                                    <label for="filter-uap">UAP</label>
+                                    <input type="text" id="filter-uap" placeholder="Enter UAP">
+                                </div>
+                                <div class="form-group">
+                                    <label for="filter-date-start">Date Start</label>
+                                    <input type="date" id="filter-date-start">
+                                </div>
+                                <div class="form-group">
+                                    <label for="filter-date-end">Date End</label>
+                                    <input type="date" id="filter-date-end">
+                                </div>
+                                <div class="form-group">
+                                    <label for="filter-week">Week</label>
+                                    <input type="number" id="filter-week" placeholder="Enter Week" min="1" max="52">
+                                </div>
+                                <div class="form-group">
+                                    <label for="filter-ligne">Ligne</label>
+                                    <input type="text" id="filter-ligne" placeholder="Enter Ligne">
+                                </div>
+                                <div class="filter-buttons">
+                                    <button type="button" onclick="showSectionData('${section}')">Apply Filters</button>
+                                    <button type="button" id="clear-filters" onclick="clearFilters('${section}')">Clear Filters</button>
+                                </div>
+                            </form>
+                            <p>No data matches the filters.</p>
+                        `;
+                        console.log(`No data for ${section} after filtering at`, new Date().toLocaleString());
+                        return;
+                    }
+
+                    barChartInstance = new Chart(document.getElementById('bar-chart'), {
+                        type: 'bar',
+                        data: {
+                            labels: weekLabels,
+                            datasets: datasets
                         },
-                        {
-                            label: 'Nombre Audite Réalisé',
-                            data: realiseData,
-                            backgroundColor: '#e74c3c'
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: { min: 0, max: 100, title: { display: true, text: 'Percentage (%)' } },
+                                x: { title: { display: true, text: 'Week' } }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const index = context.dataIndex;
+                                            const uap = context.dataset.label;
+                                            const tooltipData = tooltips.find(t => t.week === context.label.split(' ')[1] && t.uap === uap);
+                                            return [
+                                                `UAP: ${uap}`,
+                                                `Résultat: ${context.raw}%`,
+                                                `Week: ${context.label}`,
+                                                `Date: ${tooltipData?.date || 'N/A'}`,
+                                                `Commentaire: ${tooltipData?.commentaire || 'N/A'}`
+                                            ];
+                                        }
+                                    }
+                                }
+                            },
+                            animation: {
+                                duration: 1000,
+                                easing: 'easeInOutQuad'
+                            }
                         }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: { min: 0, title: { display: true, text: 'Count' } },
-                        x: { title: { display: true, text: 'Week' } }
+                    });
+                    console.log(`Rendered bar chart for ${section} with ${weekLabels.length} weeks and ${uapList.length} UAPs at`, new Date().toLocaleString());
+                }, (error) => {
+                    console.error(`Error loading data for ${section}:`, error.message);
+                    contentBody.innerHTML = `<p>Error loading chart data for ${sectionNames[section]}.</p>`;
+                });
+                return;
+            }
+
+            // Handle Taux Absenteisme (Table with Percentage)
+            if (section === 'taux-absenteisme') {
+                contentBody.innerHTML += `
+                    <div class="archive-table">
+                        <h3>${sectionNames[section]} Data</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Auditeur</th>
+                                    <th>Date</th>
+                                    <th>Week</th>
+                                    <th>Statut</th>
+                                    <th>Pourcentage Jour</th>
+                                    <th>Pourcentage Week</th>
+                                </tr>
+                            </thead>
+                            <tbody id="taux-absenteisme-table-body"></tbody>
+                        </table>
+                    </div>
+                `;
+
+                onValue(ref(db, section), (snapshot) => {
+                    const tableBody = document.getElementById('taux-absenteisme-table-body');
+                    tableBody.innerHTML = '';
+                    let data = snapshot.val() || {};
+                    data = applyFilters(section, data);
+                    console.log(`Filtered data for ${section}:`, data);
+
+                    // Compute weekly stats
+                    const weekly = {};
+                    Object.values(data).forEach(entry => {
+                        if (entry.week && entry.auditeur && entry.statut && entry.date) {
+                            const weekKey = `${entry.week}-${entry.auditeur}`;
+                            if (!weekly[weekKey]) {
+                                weekly[weekKey] = { present: 0, total: 0, week: entry.week, auditeur: entry.auditeur };
+                            }
+                            weekly[weekKey].total += 1;
+                            if (entry.statut === 'Present') {
+                                weekly[weekKey].present += 1;
+                            }
+                        }
+                    });
+
+                    if (Object.keys(data).length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="6">No data matches the filters.</td></tr>';
+                        console.log(`No data for ${section} after filtering at`, new Date().toLocaleString());
+                        return;
+                    }
+
+                    // Sort entries by auditeur, week, date
+                    const entries = Object.values(data).sort((a, b) => {
+                        return a.auditeur.localeCompare(b.auditeur) || a.week - b.week || new Date(a.date) - new Date(b.date);
+                    });
+
+                    entries.forEach((entry, index) => {
+                        const weekKey = `${entry.week}-${entry.auditeur}`;
+                        const stats = weekly[weekKey] || { present: 0 };
+                        const weekly_percentage = (stats.present / 5 * 100).toFixed(2);
+                        const daily_percentage = entry.statut === 'Present' ? 100 : 0;
+                        const row = document.createElement('tr');
+                        row.style.setProperty('--i', index);
+                        row.innerHTML = `
+                            <td>${entry.auditeur}</td>
+                            <td>${entry.date}</td>
+                            <td>Week ${entry.week}</td>
+                            <td>${entry.statut}</td>
+                            <td>${daily_percentage}%</td>
+                            <td>${weekly_percentage}%</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    console.log(`Rendered table for ${section} with ${entries.length} rows at`, new Date().toLocaleString());
+                }, (error) => {
+                    console.error(`Error loading data for ${section}:`, error.message);
+                    contentBody.innerHTML = `<p>Error loading data for ${sectionNames[section]}.</p>`;
+                });
+                return;
+            }
+
+            // Handle Taux Realisation 5S and Taux Realisation Gemba (Bar Chart)
+            if (section === 'taux-realisation-5s' || section === 'taux-realisation-gemba') {
+                contentBody.innerHTML += `
+                    <div class="chart-container">
+                        <h3>${sectionNames[section]} Results by Week (Bar Chart)</h3>
+                        <div class="spinner" id="chart-spinner"></div>
+                        <canvas id="bar-chart"></canvas>
+                    </div>
+                `;
+
+                if (barChartInstance) barChartInstance.destroy();
+
+                onValue(ref(db, section), (snapshot) => {
+                    document.getElementById('chart-spinner').style.display = 'none';
+                    let data = snapshot.val() || {};
+                    data = applyFilters(section, data);
+                    console.log(`Filtered data for ${section}:`, data);
+
+                    const weeks = {};
+                    const tooltips = [];
+
+                    Object.values(data).forEach(entry => {
+                        if (entry.week && entry.planifie != null && entry.realise != null) {
+                            const week = `Week ${entry.week}`;
+                            if (!weeks[week]) weeks[week] = { planifie: 0, realise: 0, count: 0 };
+                            weeks[week].planifie += parseInt(entry.planifie);
+                            weeks[week].realise += parseInt(entry.realise);
+                            weeks[week].count += 1;
+                            tooltips.push({
+                                week: entry.week,
+                                planifie: entry.planifie,
+                                realise: entry.realise,
+                                date: entry.date || 'N/A',
+                                commentaire: entry.commentaire || 'N/A'
+                            });
+                        }
+                    });
+
+                    const weekLabels = Object.keys(weeks).sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
+                    const planifieData = weekLabels.map(week => weeks[week].count > 0 ? weeks[week].planifie / weeks[week].count : 0);
+                    const realiseData = weekLabels.map(week => weeks[week].count > 0 ? weeks[week].realise / weeks[week].count : 0);
+
+                    if (weekLabels.length === 0) {
+                        contentBody.innerHTML = `
+                            <form id="filter-form" class="filter-form">
+                                <div class="form-group">
+                                    <label for="filter-uap">UAP</label>
+                                    <input type="text" id="filter-uap" placeholder="Enter UAP">
+                                </div>
+                                <div class="form-group">
+                                    <label for="filter-date-start">Date Start</label>
+                                    <input type="date" id="filter-date-start">
+                                </div>
+                                <div class="form-group">
+                                    <label for="filter-date-end">Date End</label>
+                                    <input type="date" id="filter-date-end">
+                                </div>
+                                <div class="form-group">
+                                    <label for="filter-week">Week</label>
+                                    <input type="number" id="filter-week" placeholder="Enter Week" min="1" max="52">
+                                </div>
+                                <div class="form-group">
+                                    <label for="filter-ligne">Ligne</label>
+                                    <input type="text" id="filter-ligne" placeholder="Enter Ligne">
+                                </div>
+                                <div class="filter-buttons">
+                                    <button type="button" onclick="showSectionData('${section}')">Apply Filters</button>
+                                    <button type="button" id="clear-filters" onclick="clearFilters('${section}')">Clear Filters</button>
+                                </div>
+                            </form>
+                            <p>No data matches the filters.</p>
+                        `;
+                        console.log(`No data for ${section} after filtering at`, new Date().toLocaleString());
+                        return;
+                    }
+
+                    barChartInstance = new Chart(document.getElementById('bar-chart'), {
+                        type: 'bar',
+                        data: {
+                            labels: weekLabels,
+                            datasets: [
+                                {
+                                    label: 'Nombre Audite Planifié',
+                                    data: planifieData,
+                                    backgroundColor: '#3498db'
+                                },
+                                {
+                                    label: 'Nombre Audite Réalisé',
+                                    data: realiseData,
+                                    backgroundColor: '#e74c3c'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: { min: 0, title: { display: true, text: 'Count' } },
+                                x: { title: { display: true, text: 'Week' } }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const index = context.dataIndex;
+                                            const tooltipData = tooltips.find(t => t.week === context.label.split(' ')[1]);
+                                            return [
+                                                `${context.dataset.label}: ${context.raw}`,
+                                                `Week: ${context.label}`,
+                                                `Date: ${tooltipData?.date || 'N/A'}`,
+                                                `Commentaire: ${tooltipData?.commentaire || 'N/A'}`
+                                            ];
+                                        }
+                                    }
+                                }
+                            },
+                            animation: {
+                                duration: 1000,
+                                easing: 'easeInOutQuad'
+                            }
+                        }
+                    });
+                    console.log(`Rendered bar chart for ${section} with ${weekLabels.length} weeks at`, new Date().toLocaleString());
+                }, (error) => {
+                    console.error(`Error loading data for ${section}:`, error.message);
+                    contentBody.innerHTML = `<p>Error loading chart data for ${sectionNames[section]}.</p>`;
+                });
+                return;
+            }
+
+            // Handle Audit sections (display charts)
+            if (section !== 'audit-5s' && section !== 'audit-gemba') {
+                contentBody.innerHTML += `<p>No chart data available for ${sectionNames[section] || section}.</p>`;
+                console.log(`No charts for section: ${section}`);
+                return;
+            }
+
+            // Render chart containers
+            contentBody.innerHTML += `
+                <div class="chart-container">
+                    <h3>${sectionNames[section]} Results (Line Chart)</h3>
+                    <div class="spinner" id="chart-spinner"></div>
+                    <canvas id="line-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>${sectionNames[section]} Results by Week (Bar Chart)</h3>
+                    <canvas id="bar-chart"></canvas>
+                </div>
+            `;
+
+            // Destroy existing chart instances to prevent overlap
+            if (lineChartInstance) lineChartInstance.destroy();
+            if (barChartInstance) barChartInstance.destroy();
+
+            // Fetch data for charts
+            onValue(ref(db, section), (snapshot) => {
+                document.getElementById('chart-spinner').style.display = 'none';
+                let data = snapshot.val() || {};
+                data = applyFilters(section, data);
+                console.log(`Filtered data for ${section}:`, data);
+                const dates = [];
+                const results = [];
+                const weeks = {};
+                const tooltips = [];
+
+                // Process data
+                Object.values(data).forEach(entry => {
+                    if (entry.date && entry.resultat != null) {
+                        dates.push(entry.date);
+                        results.push(entry.resultat);
+                        tooltips.push({
+                            ligne: entry.ligne || 'N/A',
+                            uap: entry.uap || 'N/A',
+                            date: entry.date,
+                            semaine: entry.semaine || entry.week || 'N/A',
+                            resultat: entry.resultat
+                        });
+                        const week = `Week ${entry.semaine || entry.week || 'Unknown'}`;
+                        if (!weeks[week]) weeks[week] = { total: 0, count: 0 };
+                        weeks[week].total += parseFloat(entry.resultat) || 0;
+                        weeks[week].count += 1;
+                    }
+                });
+
+                // Prepare bar chart data (average resultat per week)
+                const weekLabels = Object.keys(weeks).sort((a, b) => {
+                    const weekA = parseInt(a.split(' ')[1]) || 0;
+                    const weekB = parseInt(b.split(' ')[1]) || 0;
+                    return weekA - weekB;
+                });
+                const weekResults = weekLabels.map(week => weeks[week].count > 0 ? (weeks[week].total / weeks[week].count).toFixed(2) : 0);
+
+                // Check if data is empty
+                if (dates.length === 0) {
+                    contentBody.innerHTML = `
+                        <form id="filter-form" class="filter-form">
+                            <div class="form-group">
+                                <label for="filter-uap">UAP</label>
+                                <input type="text" id="filter-uap" placeholder="Enter UAP">
+                            </div>
+                            <div class="form-group">
+                                <label for="filter-date-start">Date Start</label>
+                                <input type="date" id="filter-date-start">
+                            </div>
+                            <div class="form-group">
+                                <label for="filter-date-end">Date End</label>
+                                <input type="date" id="filter-date-end">
+                            </div>
+                            <div class="form-group">
+                                <label for="filter-week">Week</label>
+                                <input type="number" id="filter-week" placeholder="Enter Week" min="1" max="52">
+                            </div>
+                            <div class="form-group">
+                                <label for="filter-ligne">Ligne</label>
+                                <input type="text" id="filter-ligne" placeholder="Enter Ligne">
+                            </div>
+                            <div class="filter-buttons">
+                                <button type="button" onclick="showSectionData('${section}')">Apply Filters</button>
+                                <button type="button" id="clear-filters" onclick="clearFilters('${section}')">Clear Filters</button>
+                            </div>
+                        </form>
+                        <p>No data matches the filters.</p>
+                    `;
+                    console.log(`No data for ${section} after filtering at`, new Date().toLocaleString());
+                    return;
+                }
+
+                // Line Chart with custom tooltips
+                lineChartInstance = new Chart(document.getElementById('line-chart'), {
+                    type: 'line',
+                    data: {
+                        labels: dates.sort((a, b) => new Date(a) - new Date(b)),
+                        datasets: [{
+                            label: `${sectionNames[section]} Percentage`,
+                            data: results,
+                            borderColor: section === 'audit-5s' ? '#3498db' : '#e74c3c',
+                            backgroundColor: section === 'audit-5s' ? 'rgba(52, 152, 219, 0.1)' : 'rgba(231, 76, 60, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
                     },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const index = context.dataIndex;
-                                    const tooltipData = tooltips.find(t => t.week === context.label.split(' ')[1]);
-                                    return [
-                                        `${context.dataset.label}: ${context.raw}`,
-                                        `Week: ${context.label}`,
-                                        `Date: ${tooltipData?.date || 'N/A'}`,
-                                        `Commentaire: ${tooltipData?.commentaire || 'N/A'}`
-                                    ];
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { min: 0, max: 100, title: { display: true, text: 'Percentage (%)' } },
+                            x: { title: { display: true, text: 'Date' } }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const index = context.dataIndex;
+                                        const tooltipData = tooltips[index];
+                                        return [
+                                            `Résultat: ${tooltipData.resultat}%`,
+                                            `Date: ${tooltipData.date}`,
+                                            `Semaine: ${tooltipData.semaine}`,
+                                            `Ligne: ${tooltipData.ligne}`,
+                                            `UAP: ${tooltipData.uap}`
+                                        ];
+                                    }
                                 }
                             }
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeInOutQuad'
                         }
-                    },
-                    animation: {
-                        duration: 1000,
-                        easing: 'easeInOutQuad'
                     }
-                }
-            });
-            console.log(`Rendered bar chart for ${section} with ${weekLabels.length} weeks at`, new Date().toLocaleString());
-        }, (error) => {
-            console.error(`Error loading data for ${section}:`, error.message);
-            contentBody.innerHTML = `<p>Error loading chart data for ${sectionNames[section]}.</p>`;
-        });
-        return;
-    }
-
-    // Handle Audit sections (display charts)
-    contentBody.innerHTML = `
-        <div class="chart-container">
-            <h3>${sectionNames[section]} Results (Line Chart)</h3>
-            <div class="spinner" id="chart-spinner"></div>
-            <canvas id="line-chart"></canvas>
-        </div>
-        <div class="chart-container">
-            <h3>${sectionNames[section]} Results by Week (Bar Chart)</h3>
-            <canvas id="bar-chart"></canvas>
-        </div>
-    `;
-
-    if (lineChartInstance) lineChartInstance.destroy();
-    if (barChartInstance) barChartInstance.destroy();
-
-    onValue(ref(db, section), (snapshot) => {
-        document.getElementById('chart-spinner').style.display = 'none';
-        let data = snapshot.val() || {};
-        data = applyFilters(section, data);
-        console.log(`Filtered data for ${section}:`, data);
-        const dates = [];
-        const results = [];
-        const weeks = {};
-        const tooltips = [];
-
-        Object.values(data).forEach(entry => {
-            if (entry.date && entry.resultat != null) {
-                dates.push(entry.date);
-                results.push(entry.resultat);
-                tooltips.push({
-                    ligne: entry.ligne || 'N/A',
-                    uap: entry.uap || 'N/A',
-                    date: entry.date,
-                    semaine: entry.semaine || entry.week || 'N/A',
-                    resultat: entry.resultat
                 });
-                const week = `Week ${entry.semaine || entry.week || 'Unknown'}`;
-                if (!weeks[week]) weeks[week] = { total: 0, count: 0 };
-                weeks[week].total += parseFloat(entry.resultat) || 0;
-                weeks[week].count += 1;
-            }
-        });
 
-        const weekLabels = Object.keys(weeks).sort((a, b) => {
-            const weekA = parseInt(a.split(' ')[1]) || 0;
-            const weekB = parseInt(b.split(' ')[1]) || 0;
-            return weekA - weekB;
-        });
-        const weekResults = weekLabels.map(week => weeks[week].count > 0 ? (weeks[week].total / weeks[week].count).toFixed(2) : 0);
-
-        if (dates.length === 0) {
-            contentBody.innerHTML = `<p>No data matches the filters.</p>`;
-            console.log(`No data for ${section} after filtering at`, new Date().toLocaleString());
-            return;
-        }
-
-        lineChartInstance = new Chart(document.getElementById('line-chart'), {
-            type: 'line',
-            data: {
-                labels: dates.sort((a, b) => new Date(a) - new Date(b)),
-                datasets: [{
-                    label: `${sectionNames[section]} Percentage`,
-                    data: results,
-                    borderColor: section === 'audit-5s' ? '#3498db' : '#e74c3c',
-                    backgroundColor: section === 'audit-5s' ? 'rgba(52, 152, 219, 0.1)' : 'rgba(231, 76, 60, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: { min: 0, max: 100, title: { display: true, text: 'Percentage (%)' } },
-                    x: { title: { display: true, text: 'Date' } }
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const index = context.dataIndex;
-                                const tooltipData = tooltips[index];
-                                return [
-                                    `Résultat: ${tooltipData.resultat}%`,
-                                    `Date: ${tooltipData.date}`,
-                                    `Semaine: ${tooltipData.semaine}`,
-                                    `Ligne: ${tooltipData.ligne}`,
-                                    `UAP: ${tooltipData.uap}`
-                                ];
+                // Bar Chart with custom tooltips
+                barChartInstance = new Chart(document.getElementById('bar-chart'), {
+                    type: 'bar',
+                    data: {
+                        labels: weekLabels,
+                        datasets: [{
+                            label: `${sectionNames[section]} Average Percentage`,
+                            data: weekResults,
+                            backgroundColor: section === 'audit-5s' ? '#3498db' : '#e74c3c'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { min: 0, max: 100, title: { display: true, text: 'Average Percentage (%)' } },
+                            x: { title: { display: true, text: 'Week' } }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Average Résultat: ${context.raw}%`;
+                                    }
+                                }
                             }
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeInOutQuad'
                         }
                     }
-                },
-                animation: {
-                    duration: 1000,
-                    easing: 'easeInOutQuad'
-                }
-            }
-        });
+                });
 
-        barChartInstance = new Chart(document.getElementById('bar-chart'), {
-            type: 'bar',
-            data: {
-                labels: weekLabels,
-                datasets: [{
-                    label: `${sectionNames[section]} Average Percentage`,
-                    data: weekResults,
-                    backgroundColor: section === 'audit-5s' ? '#3498db' : '#e74c3c'
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: { min: 0, max: 100, title: { display: true, text: 'Average Percentage (%)' } },
-                    x: { title: { display: true, text: 'Week' } }
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `Average Résultat: ${context.raw}%`;
-                            }
-                        }
-                    }
-                },
-                animation: {
-                    duration: 1000,
-                    easing: 'easeInOutQuad'
-                }
-            }
-        });
-
-        console.log(`Rendered charts for ${section} with filters:`, { dates, results, weekLabels, weekResults }, 'at', new Date().toLocaleString());
-    }, (error) => {
-        console.error(`Error loading data for ${section}:`, error.message);
-        contentBody.innerHTML = `<p>Error loading chart data for ${sectionNames[section]}.</p>`;
-    });
-}
+                console.log(`Rendered charts for ${section} with filters:`, { dates, results, weekLabels, weekResults }, 'at', new Date().toLocaleString());
+            }, (error) => {
+                console.error(`Error loading data for ${section}:`, error.message);
+                contentBody.innerHTML = `<p>Error loading chart data for ${sectionNames[section]}.</p>`;
+            });
+        };
 
         // Show archive data with filtering
         window.showArchiveData = function() {
@@ -1569,13 +1643,24 @@ function renderSectionData(section) {
                         </div>
                         <div class="form-group">
                             <label for="taux-absenteisme-auditeur">Nom Auditeur</label>
-                            <input type="text" id="taux-absenteisme-auditeur" placeholder="Enter Nom Auditeur" required>
+                            <select id="taux-absenteisme-auditeur" required>
+                                <option value="">Select Nom Auditeur</option>
+                                <option value="Mohamed Chamsi">Mohamed Chamsi</option>
+                                <option value="Ahmed KHAMESI">Ahmed KHAMESI</option>
+                                <option value="Anis YAHYAOUI">Anis YAHYAOUI</option>
+                                <option value="Maugendre Jérémie">Maugendre Jérémie</option>
+                                <option value="Hafaiedh Sami">Hafaiedh Sami</option>
+                                <option value="Tarek Jaouada">Tarek Jaouada</option>
+                                <option value="Sghair Bedis">Sghair Bedis</option>
+                                <option value="Gargouri Mohamed Amine">Gargouri Mohamed Amine</option>
+                                <option value="Chakroun Sahbi">Chakroun Sahbi</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="taux-absenteisme-statut">Statut</label>
                             <select id="taux-absenteisme-statut" required>
-                                <option value="Présent">Présent</option>
-                                <option value="Absence">Absence</option>
+                                <option value="Present">Present</option>
+                                <option value="Absent">Absent</option>
                             </select>
                         </div>
                         <div class="form-group">
