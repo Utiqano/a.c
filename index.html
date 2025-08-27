@@ -1846,20 +1846,80 @@
             }
         };
 
-        // Export table to Excel (CSV format)
-        window.exportToExcel = function(tableId, fileName) {
-            const table = document.getElementById(tableId);
-            const rows = Array.from(table.rows);
-            const csvContent = rows.map(row => Array.from(row.cells).map(cell => `"${cell.innerText.replace(/"/g, '""')}"`).join(',')).join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `${fileName}.csv`;
-            link.click();
-            URL.revokeObjectURL(url);
-            console.log(`Exported table to ${fileName}.csv at`, new Date().toLocaleString());
+       // Export archive table to CSV with sorting
+window.exportToExcel = function(tableId, fileName) {
+    console.log(`Exporting table ${tableId} to CSV at`, new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+    
+    const table = document.getElementById(tableId);
+    if (!table) {
+        console.error(`Table with ID ${tableId} not found`);
+        alert('Error: Table not found for export.');
+        return;
+    }
+
+    // Define headers for CSV
+    const headers = ['section', 'date', 'uap', 'ligne', 'semain', 'resultat'];
+    
+    // Get rows and parse details
+    const rows = Array.from(table.querySelectorAll('tbody tr')).map(row => {
+        const cells = Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim());
+        const details = cells[2] || ''; // Details column
+        // Parse details into key-value pairs
+        const detailsMap = {};
+        details.split(', ').forEach(pair => {
+            const [key, value] = pair.split(': ').map(s => s.trim());
+            if (key && value) detailsMap[key.toLowerCase()] = value;
+        });
+        const rowData = {
+            section: cells[0] || 'N/A',
+            date: cells[1] || 'N/A',
+            uap: detailsMap['uap'] || 'N/A',
+            ligne: detailsMap['ligne'] || 'N/A',
+            semaine: detailsMap['semaine'] || detailsMap['week'] || 'N/A',
+            resultat: detailsMap['resultat'] || detailsMap['result'] || 'N/A',
+            rawDate: cells[1] ? new Date(cells[1].split('/').reverse().join('-')) : new Date(0) // Convert DD/MM/YYYY to YYYY-MM-DD
         };
+        console.log('Parsed row:', rowData); // Debug log to verify extracted data
+        return rowData;
+    });
+
+    // Sort rows by date (ascending), then by section
+    rows.sort((a, b) => {
+        if (isNaN(a.rawDate.getTime()) && isNaN(b.rawDate.getTime())) {
+            return a.section.localeCompare(b.section);
+        }
+        if (isNaN(a.rawDate.getTime())) return 1;
+        if (isNaN(b.rawDate.getTime())) return -1;
+        return a.rawDate - b.rawDate;
+    });
+
+    // Prepare CSV content
+    const csvContent = [
+        headers.join(','), // Header row
+        ...rows.map(row => [
+            `"${row.section.replace(/"/g, '""')}"`,
+            `"${row.date.replace(/"/g, '""')}"`,
+            `"${row.uap.replace(/"/g, '""')}"`,
+            `"${row.ligne.replace(/"/g, '""')}"`,
+            `"${row.semaine.replace(/"/g, '""')}"`,
+            `"${row.resultat.replace(/"/g, '""')}"`
+        ].join(','))
+    ].join('\n');
+
+    // Add UTF-8 BOM for Excel compatibility
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // Create download link
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${fileName}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    console.log(`Exported ${rows.length} rows to ${fileName}.csv, sorted by date`);
+};
 
         // Submit form data to Firebase
         window.submitForm = async function(section) {
