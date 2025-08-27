@@ -803,14 +803,7 @@
             const ligneFilter = document.getElementById('filter-ligne')?.value.trim().toLowerCase() || '';
             const sectionFilter = document.getElementById('filter-section')?.value.trim().toLowerCase() || '';
 
-            console.log(`Applying filters for ${section}:`, {
-                uapFilter,
-                dateStartFilter,
-                dateEndFilter,
-                weekFilter,
-                ligneFilter,
-                sectionFilter
-            });
+            console.log(`Applying filters for ${section}:`, { uapFilter, dateStartFilter, dateEndFilter, weekFilter, ligneFilter, sectionFilter });
 
             return Object.entries(data).filter(([key, entry]) => {
                 let pass = true;
@@ -820,21 +813,20 @@
                 }
 
                 if (dateStartFilter && dateEndFilter) {
-                    const entryDate = new Date(entry.date || entry.timestamp || 'Invalid Date');
+                    const entryDate = new Date(entry.date || entry.timestamp);
                     const startDate = new Date(dateStartFilter);
                     const endDate = new Date(dateEndFilter);
                     endDate.setHours(23, 59, 59, 999);
                     if (isNaN(entryDate.getTime()) || entryDate < startDate || entryDate > endDate) {
                         pass = false;
                     }
-                } else if (dateStartFilter && entry.date && entry.date !== dateStartFilter) {
+                } else if (dateStartFilter && entry.date !== dateStartFilter) {
                     pass = false;
                 }
 
                 if (weekFilter) {
                     const weekValue = parseInt(weekFilter);
-                    const entryWeek = parseInt(entry.semaine || entry.week || 0);
-                    if (isNaN(entryWeek) || entryWeek !== weekValue) {
+                    if ((entry.semaine && parseInt(entry.semaine) !== weekValue) || (entry.week && parseInt(entry.week) !== weekValue)) {
                         pass = false;
                     }
                 }
@@ -854,46 +846,18 @@
             }, {});
         };
 
-        // Apply filters and render with debouncing
-        window.applyFiltersAndRender = function(section) {
-            const applyButton = document.getElementById('apply-filters');
-            const loadingSpinner = document.getElementById('filter-loading');
-
-            if (!applyButton || !loadingSpinner) {
-                console.error('Apply button or loading spinner not found for section:', section);
-                return;
-            }
-
-            console.log(`Apply Filters button clicked for section: ${section}`);
-            applyButton.disabled = true;
-            applyButton.innerHTML = 'Applying...';
-            loadingSpinner.style.display = 'block';
-
-            setTimeout(() => {
-                if (section === 'archive') {
-                    showArchiveData();
-                } else {
-                    renderSectionData(section);
-                }
-                applyButton.disabled = false;
-                applyButton.innerHTML = 'Apply Filters';
-                loadingSpinner.style.display = 'none';
-                console.log(`Filters applied and data rendered for ${section} at`, new Date().toLocaleString());
-            }, 500);
-        };
-
         // Clear filters
         window.clearFilters = function(section) {
             const form = document.getElementById('filter-form');
             if (form) {
                 form.reset();
-                console.log(`Filters cleared for ${section} at`, new Date().toLocaleString());
                 if (section === 'archive') {
                     showArchiveData();
                 } else {
-                    renderSectionData(section);
+                    showSectionData(section);
                 }
             }
+            console.log(`Filters cleared for ${section} at`, new Date().toLocaleString());
         };
 
         // Show section-specific data in Dashboard
@@ -938,7 +902,7 @@
                         <input type="text" id="filter-ligne" placeholder="Enter Ligne">
                     </div>
                     <div class="filter-buttons">
-                        <button type="button" id="apply-filters" onclick="applyFiltersAndRender('${section}')">Apply Filters</button>
+                        <button type="button" onclick="applyFiltersAndRender('${section}')">Apply Filters</button>
                         <button type="button" id="clear-filters" onclick="clearFilters('${section}')">Clear Filters</button>
                     </div>
                 </form>
@@ -949,89 +913,22 @@
             renderSectionData(section);
         };
 
-        // Show archive data
-        window.showArchiveData = function() {
-            const contentBody = document.getElementById('content-body');
-            const contentTitle = document.getElementById('content-title');
-            contentTitle.textContent = 'Archive';
-
-            contentBody.innerHTML = `
-                <form id="filter-form" class="filter-form">
-                    <div class="form-group">
-                        <label for="filter-uap">UAP</label>
-                        <input type="text" id="filter-uap" placeholder="Enter UAP">
-                    </div>
-                    <div class="form-group">
-                        <label for="filter-date-start">Date Start</label>
-                        <input type="date" id="filter-date-start">
-                    </div>
-                    <div class="form-group">
-                        <label for="filter-date-end">Date End</label>
-                        <input type="date" id="filter-date-end">
-                    </div>
-                    <div class="form-group">
-                        <label for="filter-week">Week</label>
-                        <input type="number" id="filter-week" placeholder="Enter Week" min="1" max="52">
-                    </div>
-                    <div class="form-group">
-                        <label for="filter-ligne">Ligne</label>
-                        <input type="text" id="filter-ligne" placeholder="Enter Ligne">
-                    </div>
-                    <div class="form-group">
-                        <label for="filter-section">Section</label>
-                        <input type="text" id="filter-section" placeholder="Enter Section">
-                    </div>
-                    <div class="filter-buttons">
-                        <button type="button" id="apply-filters" onclick="applyFiltersAndRender('archive')">Apply Filters</button>
-                        <button type="button" id="clear-filters" onclick="clearFilters('archive')">Clear Filters</button>
-                    </div>
-                </form>
-                <div id="filter-loading" class="spinner" style="display: none;"></div>
-                <div class="archive-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Section</th>
-                                <th>Date</th>
-                                <th>Details</th>
-                            </tr>
-                        </thead>
-                        <tbody id="archive-table-body"></tbody>
-                    </table>
-                </div>
-                <button id="export-archive" onclick="exportToExcel('archive-table-body', 'archive-data')">Export to Excel</button>
-            `;
-
-            onValue(ref(db, 'archive'), (snapshot) => {
-                const tableBody = document.getElementById('archive-table-body');
-                tableBody.innerHTML = '';
-                let data = snapshot.val() || {};
-                data = applyFilters('archive', data);
-                console.log('Filtered archive data:', data);
-
-                if (Object.keys(data).length > 0) {
-                    Object.entries(data).forEach(([key, entry], index) => {
-                        const row = document.createElement('tr');
-                        row.style.setProperty('--i', index);
-                        const details = Object.entries(entry)
-                            .filter(([k]) => k !== 'timestamp' && k !== 'userId' && k !== 'section')
-                            .map(([k, v]) => `${k}: ${v || 'N/A'}`)
-                            .join(', ');
-                        row.innerHTML = `
-                            <td>${entry.section || 'N/A'}</td>
-                            <td>${entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('en-GB') : 'N/A'}</td>
-                            <td>${details || 'N/A'}</td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                } else {
-                    tableBody.innerHTML = '<tr><td colspan="3">No data matches the filters.</td></tr>';
-                }
-                console.log(`Rendered archive table with ${Object.keys(data).length} rows at`, new Date().toLocaleString());
-            }, (error) => {
-                console.error('Error loading archive:', error.message);
-                document.getElementById('archive-table-body').innerHTML = '<tr><td colspan="3">Error loading data.</td></tr>';
-            });
+        window.applyFiltersAndRender = function(section) {
+            const applyButton = document.getElementById('apply-filters');
+            const loadingSpinner = document.getElementById('filter-loading');
+            
+            console.log(`Apply Filters button clicked for section: ${section}`);
+            applyButton.disabled = true;
+            applyButton.innerHTML = 'Applying...';
+            loadingSpinner.style.display = 'block';
+            
+            setTimeout(() => {
+                console.log(`Rendering data for ${section} after filter application`);
+                renderSectionData(section);
+                applyButton.disabled = false;
+                applyButton.innerHTML = 'Apply Filters';
+                loadingSpinner.style.display = 'none';
+            }, 100);
         };
 
         // Render section data
@@ -1558,6 +1455,88 @@
                 contentBody.innerHTML = `<p>Error loading chart data for ${sectionNames[section]}.</p>`;
             });
         }
+
+        // Show archive data
+        window.showArchiveData = function() {
+            const contentBody = document.getElementById('content-body');
+            const contentTitle = document.getElementById('content-title');
+            contentTitle.textContent = 'Archive';
+
+            contentBody.innerHTML = `
+                <form id="filter-form" class="filter-form">
+                    <div class="form-group">
+                        <label for="filter-uap">UAP</label>
+                        <input type="text" id="filter-uap" placeholder="Enter UAP">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-date-start">Date Start</label>
+                        <input type="date" id="filter-date-start">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-date-end">Date End</label>
+                        <input type="date" id="filter-date-end">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-week">Week</label>
+                        <input type="number" id="filter-week" placeholder="Enter Week" min="1" max="52">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-ligne">Ligne</label>
+                        <input type="text" id="filter-ligne" placeholder="Enter Ligne">
+                    </div>
+                    <div class="form-group">
+                        <label for="filter-section">Section</label>
+                        <input type="text" id="filter-section" placeholder="Enter Section">
+                    </div>
+                    <div class="filter-buttons">
+                        <button type="button" onclick="showArchiveData()">Apply Filters</button>
+                        <button type="button" id="clear-filters" onclick="clearFilters('archive')">Clear Filters</button>
+                    </div>
+                </form>
+                <div class="archive-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Section</th>
+                                <th>Date</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="archive-table-body"></tbody>
+                    </table>
+                </div>
+                <button id="export-archive" onclick="exportToExcel('archive-table-body', 'archive-data')">Export to Excel</button>
+            `;
+
+            onValue(ref(db, 'archive'), (snapshot) => {
+                const tableBody = document.getElementById('archive-table-body');
+                tableBody.innerHTML = '';
+                let data = snapshot.val() || {};
+                data = applyFilters('archive', data);
+                console.log('Filtered archive data:', data);
+                if (Object.keys(data).length > 0) {
+                    Object.entries(data).forEach(([key, entry], index) => {
+                        const row = document.createElement('tr');
+                        row.style.setProperty('--i', index);
+                        const details = Object.entries(entry)
+                            .filter(([k]) => k !== 'timestamp' && k !== 'userId' && k !== 'section')
+                            .map(([k, v]) => `${k}: ${v}`).join(', ');
+                        row.innerHTML = `
+                            <td>${entry.section || 'N/A'}</td>
+                            <td>${entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : 'N/A'}</td>
+                            <td>${details || 'N/A'}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="3">No data matches the filters.</td></tr>';
+                }
+                console.log(`Rendered archive table with ${Object.keys(data).length} rows at`, new Date().toLocaleString());
+            }, (error) => {
+                console.error('Error loading archive:', error.message);
+                document.getElementById('archive-table-body').innerHTML = '<tr><td colspan="3">Error loading data.</td></tr>';
+            });
+        };
 
         // Show content and manage navbar/form/visualizations
         window.showContent = function(section) {
