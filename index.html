@@ -684,6 +684,18 @@
         let lineChartInstance = null;
         let barChartInstance = null;
 
+        // Helper function to determine color based on percentage
+        function getColorForPercentage(value) {
+            if (value >= 0 && value <= 74) {
+                return '#ef4444'; // Red
+            } else if (value >= 75 && value <= 84) {
+                return '#f59e0b'; // Orange
+            } else if (value >= 85 && value <= 100) {
+                return '#10b981'; // Green
+            }
+            return '#6b7280'; // Default (gray) for invalid values
+        }
+
         // Toggle between login and signup forms
         window.toggleForm = function() {
             const loginBox = document.getElementById('login-box');
@@ -1134,10 +1146,12 @@
 
                     const weekLabels = Object.keys(weeks).sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
                     const uapList = Array.from(uaps);
-                    const datasets = uapList.map((uap, index) => ({
+                    const datasets = uapList.map(uap => ({
                         label: uap,
                         data: weekLabels.map(week => weeks[week][uap] || 0),
-                        backgroundColor: `hsl(${index * 360 / uapList.length}, 70%, 50%)`
+                        backgroundColor: weekLabels.map(week => getColorForPercentage(weeks[week][uap] || 0)),
+                        borderColor: weekLabels.map(week => getColorForPercentage(weeks[week][uap] || 0)),
+                        borderWidth: 1
                     }));
 
                     if (weekLabels.length === 0) {
@@ -1232,14 +1246,23 @@
 
                     const weekLabels = Object.keys(weeks).sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
                     const auditorList = Array.from(auditors);
-                    const colorPalette = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
-                    const datasets = auditorList.map((auditeur, index) => ({
+                    const datasets = auditorList.map(auditeur => ({
                         label: auditeur,
                         data: weekLabels.map(week => {
                             const stats = weeks[week][auditeur] || { present: 0, total: 0 };
                             return stats.total > 0 ? ((stats.present / stats.total) * 100).toFixed(2) : 0;
                         }),
-                        backgroundColor: colorPalette[index % colorPalette.length]
+                        backgroundColor: weekLabels.map(week => {
+                            const stats = weeks[week][auditeur] || { present: 0, total: 0 };
+                            const percentage = stats.total > 0 ? ((stats.present / stats.total) * 100).toFixed(2) : 0;
+                            return getColorForPercentage(percentage);
+                        }),
+                        borderColor: weekLabels.map(week => {
+                            const stats = weeks[week][auditeur] || { present: 0, total: 0 };
+                            const percentage = stats.total > 0 ? ((stats.present / stats.total) * 100).toFixed(2) : 0;
+                            return getColorForPercentage(percentage);
+                        }),
+                        borderWidth: 1
                     }));
 
                     if (weekLabels.length === 0) {
@@ -1343,6 +1366,11 @@
                     const weekLabels = Object.keys(weeks).sort((a, b) => parseInt(a.split(' ')[1]) - parseInt(b.split(' ')[1]));
                     const planifieData = weekLabels.map(week => weeks[week].count > 0 ? weeks[week].planifie / weeks[week].count : 0);
                     const realiseData = weekLabels.map(week => weeks[week].count > 0 ? weeks[week].realise / weeks[week].count : 0);
+                    const percentageData = weekLabels.map(week => {
+                        const planifie = weeks[week].count > 0 ? weeks[week].planifie / weeks[week].count : 0;
+                        const realise = weeks[week].count > 0 ? weeks[week].realise / weeks[week].count : 0;
+                        return planifie > 0 ? ((realise / planifie) * 100).toFixed(2) : 0;
+                    });
 
                     if (weekLabels.length === 0) {
                         contentBody.innerHTML = `<p>No data matches the filters.</p>`;
@@ -1358,12 +1386,16 @@
                                 {
                                     label: 'Nombre Audite Planifié',
                                     data: planifieData,
-                                    backgroundColor: '#3b82f6'
+                                    backgroundColor: '#3b82f6',
+                                    borderColor: '#3b82f6',
+                                    borderWidth: 1
                                 },
                                 {
                                     label: 'Nombre Audite Réalisé',
                                     data: realiseData,
-                                    backgroundColor: '#ef4444'
+                                    backgroundColor: percentageData.map(p => getColorForPercentage(p)),
+                                    borderColor: percentageData.map(p => getColorForPercentage(p)),
+                                    borderWidth: 1
                                 }
                             ]
                         },
@@ -1437,7 +1469,7 @@
                 Object.values(data).forEach(entry => {
                     if (entry.date && entry.resultat != null) {
                         dates.push(entry.date);
-                        results.push(entry.resultat);
+                        results.push(parseFloat(entry.resultat));
                         tooltips.push({
                             ligne: entry.ligne || 'N/A',
                             uap: entry.uap || 'N/A',
@@ -1472,8 +1504,10 @@
                         datasets: [{
                             label: `${sectionNames[section]} Percentage`,
                             data: results,
-                            borderColor: section === 'audit-5s' ? '#3b82f6' : '#ef4444',
-                            backgroundColor: section === 'audit-5s' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            borderColor: results.map(value => getColorForPercentage(value)),
+                            backgroundColor: results.map(value => getColorForPercentage(value) + '33'), // Add 20% opacity
+                            pointBackgroundColor: results.map(value => getColorForPercentage(value)),
+                            pointBorderColor: results.map(value => getColorForPercentage(value)),
                             fill: true,
                             tension: 0.4
                         }]
@@ -1521,7 +1555,9 @@
                         datasets: [{
                             label: `${sectionNames[section]} Average Percentage`,
                             data: weekResults,
-                            backgroundColor: section === 'audit-5s' ? '#3b82f6' : '#ef4444'
+                            backgroundColor: weekResults.map(value => getColorForPercentage(value)),
+                            borderColor: weekResults.map(value => getColorForPercentage(value)),
+                            borderWidth: 1
                         }]
                     },
                     options: {
@@ -1781,6 +1817,10 @@
                     <form id="top-action-5s-form">
                         <div class="form-group">
                             <label for="top-action-5s-date">Date</label>
+                            <input type="date" id="top-action-5s-date" required>
+                        </div>
+                        <div class="form-group">
+                           <label for="top-action-5s-date">Date</label>
                             <input type="date" id="top-action-5s-date" required>
                         </div>
                         <div class="form-group">
