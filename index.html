@@ -565,36 +565,53 @@
                 font-size: 1.5rem;
             }
         }
-      /* Container for the welcome message */
+       /* Container for the welcome message with glassmorphism and glowing border */
     .dashboard-welcome {
         text-align: center;
-        padding: 3vw 5vw;
-        background: linear-gradient(135deg, #d3d3d3, #808080); /* Gray gradient */
-        border-radius: 12px;
-        margin: 2vw;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        animation: pulseBackground 4s ease-in-out infinite;
+        padding: clamp(20px, 4vw, 40px);
+        background: rgba(211, 211, 211, 0.2); /* Light gray with transparency */
+        backdrop-filter: blur(10px); /* Glassmorphism effect */
+        border-radius: 15px;
+        margin: clamp(10px, 2vw, 20px);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 64, 64, 0.3); /* Red border */
         max-width: 90vw;
         box-sizing: border-box;
+        position: relative;
+        overflow: hidden;
+        animation: scaleIn 1.5s ease-in-out, glowBorder 2s ease-in-out infinite;
     }
 
-    /* Fade-in animation for the container */
-    @keyframes fadeIn {
-        0% { opacity: 0; transform: translateY(20px); }
-        100% { opacity: 1; transform: translateY(0); }
+    /* Scale-in animation for the container */
+    @keyframes scaleIn {
+        0% { opacity: 0; transform: scale(0.8); }
+        100% { opacity: 1; transform: scale(1); }
     }
 
-    /* Typing effect for the welcome message */
+    /* Glowing border effect */
+    @keyframes glowBorder {
+        0% { border-color: rgba(255, 64, 64, 0.3); box-shadow: 0 0 5px rgba(255, 64, 64, 0.3); }
+        50% { border-color: rgba(255, 64, 64, 0.6); box-shadow: 0 0 15px rgba(255, 64, 64, 0.6); }
+        100% { border-color: rgba(255, 64, 64, 0.3); box-shadow: 0 0 5px rgba(255, 64, 64, 0.3); }
+    }
+
+    /* Typing effect with letter-spacing animation for the welcome message */
     .welcome-text {
-        font-size: clamp(1.5rem, 5vw, 2.5rem); /* Responsive font size */
-        font-weight: 700;
-        color: #8b0000; /* Dark red for text */
+        font-size: clamp(1.5rem, 4.5vw, 2.8rem);
+        font-weight: 800;
+        color: #8b0000; /* Dark red */
         overflow: hidden;
         white-space: nowrap;
-        border-right: 3px solid #8b0000; /* Dark red cursor */
-        animation: typing 4s steps(40, end) forwards, blink 0.75s step-end infinite;
+        border-right: 4px solid #8b0000;
+        animation: typing 4s steps(40, end) forwards, blink 0.75s step-end infinite, letterSpacing 2s ease-in-out;
         margin: 0 auto;
-        max-width: 95%;
+        max-width: 200%;
+        transition: color 0.3s ease;
+    }
+
+    /* Hover effect for welcome text */
+    .welcome-text:hover {
+        color: #ff4040; /* Brighter red on hover */
     }
 
     /* Typing animation keyframes */
@@ -606,42 +623,111 @@
     /* Blinking cursor effect */
     @keyframes blink {
         from, to { border-color: transparent; }
-        50% { border-color: #8b0000; } /* Dark red cursor */
+        50% { border-color: #8b0000; }
+    }
+
+    /* Letter-spacing animation */
+    @keyframes letterSpacing {
+        0% { letter-spacing: 2px; }
+        100% { letter-spacing: 0; }
     }
 
     /* Pulse background effect with red/gray tones */
     @keyframes pulseBackground {
-        0% { background: linear-gradient(135deg, #d3d3d3, #808080); } /* Light gray to medium gray */
-        50% { background: linear-gradient(135deg, #ff4040, #696969); } /* Red to dark gray */
-        100% { background: linear-gradient(135deg, #d3d3d3, #808080); }
+        0% { background: rgba(211, 211, 211, 0.2); }
+        50% { background: rgba(255, 64, 64, 0.3); } /* Red tint */
+        100% { background: rgba(211, 211, 211, 0.2); }
+    }
+
+    /* Subtle particle background effect */
+    .dashboard-welcome::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, rgba(255, 64, 64, 0.1) 10%, transparent 10%) 0 0 / 20px 20px;
+        animation: particleMove 10s linear infinite;
+        z-index: -1;
+    }
+
+    @keyframes particleMove {
+        0% { background-position: 0 0; }
+        100% { background-position: 20px 20px; }
+    }
+
+    /* Secondary text styling */
+    .dashboard-welcome p {
+        font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+        color: #333; /* Dark gray */
+        margin-top: clamp(10px, 2vw, 20px);
+        animation: fadeIn 2s ease-in-out;
+        transition: transform 0.3s ease;
+    }
+
+    /* Hover effect for secondary text */
+    .dashboard-welcome p:hover {
+        transform: scale(1.05);
+    }
+
+    /* Image styling */
+    .dashboard-image {
+        max-width: 100%;
+        width: clamp(200px, 50vw, 600px); /* Responsive width */
+        height: auto;
+        margin: clamp(15px, 3vw, 30px) auto 0;
+        border-radius: 80px;
+        box-shadow: 0 20px 10px rgba(0, 0, 0, 0.2);
+        animation: imageFadeIn 2s ease-in-out;
+        transition: transform 0.3s ease;
+    }
+
+    /* Image hover effect */
+    .dashboard-image:hover {
+        transform: scale(1.05);
+    }
+
+    /* Image fade-in with zoom animation */
+    @keyframes imageFadeIn {
+        0% { opacity: 0; transform: scale(0.9); }
+        100% { opacity: 1; transform: scale(1); }
     }
 
     /* Responsive adjustments */
     @media (max-width: 768px) {
         .dashboard-welcome {
-            padding: 4vw 6vw;
-            margin: 3vw;
+            padding: clamp(115px, 3vw, 30px);
+            margin: clamp(8px, 1.5vw, 15px);
         }
         .welcome-text {
-            font-size: clamp(1rem, 4vw, 1.8rem);
+            font-size: clamp(1rem, 3.5vw, 2rem);
         }
         .dashboard-welcome p {
-            font-size: clamp(0.9rem, 3vw, 1rem);
-            margin-top: 3vw;
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            margin-top: clamp(8px, 1.5vw, 15px);
+        }
+        .dashboard-image {
+            width: clamp(150px, 60vw, 400px);
+            margin-top: clamp(10px, 2vw, 20px);
         }
     }
 
     @media (max-width: 480px) {
         .dashboard-welcome {
-            padding: 5vw 7vw;
-            margin: 4vw;
+            padding: clamp(10px, 2.5vw, 20px);
+            margin: clamp(5px, 1vw, 10px);
         }
         .welcome-text {
-            font-size: clamp(0.8rem, 3.5vw, 1.5rem);
+            font-size: clamp(0.8rem, 3vw, 1.5rem);
         }
         .dashboard-welcome p {
-            font-size: clamp(0.8rem, 2.5vw, 0.9rem);
-            margin-top: 4vw;
+            font-size: clamp(0.7rem, 1.8vw, 0.9rem);
+            margin-top: clamp(5px, 1vw, 10px);
+        }
+        .dashboard-image {
+            width: clamp(120px, 70vw, 300px);
+            margin-top: clamp(8px, 1.5vw, 15px);
         }
     }
     </style>
@@ -1946,8 +2032,10 @@
                 'dashboard': ``,
                'kpi-dashboard': `
     <div class="dashboard-welcome" style="animation: fadeIn 1.5s ease-in-out;">
-    <div class="welcome-text">A.C WKW Automotive Tunisie</div>
-    <p style="font-size: clamp(0.9rem, 3vw, 1.2rem); color: #333; margin-top: 20px; animation: fadeIn 2s ease-in-out;">Select an item from the sidebar to view details.</p>
+    <div class="dashboard-welcome" style="animation: scaleIn 1.5s ease-in-out, glowBorder 2s ease-in-out infinite;">
+    <div class="welcome-text" aria-live="polite"> A.C WKW Automotive Tunisie</div>
+    <p style="font-size: clamp(0.9rem, 2.5vw, 1.2rem); color: #333; margin-top: clamp(10px, 2vw, 20px); animation: fadeIn 2s ease-in-out;">Select an item from the sidebar to view details.</p>
+    <img src="https://img.freepik.com/premium-vector/pdca-plan-check-act-is-iterative-design-management-method_518018-1792.jpg?w=2000" alt="PDCA Cycle Diagram" class="dashboard-image">
 </div>
 `
             };
