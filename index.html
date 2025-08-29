@@ -565,6 +565,85 @@
                 font-size: 1.5rem;
             }
         }
+      /* Container for the welcome message */
+    .dashboard-welcome {
+        text-align: center;
+        padding: 3vw 5vw;
+        background: linear-gradient(135deg, #d3d3d3, #808080); /* Gray gradient */
+        border-radius: 12px;
+        margin: 2vw;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        animation: pulseBackground 4s ease-in-out infinite;
+        max-width: 90vw;
+        box-sizing: border-box;
+    }
+
+    /* Fade-in animation for the container */
+    @keyframes fadeIn {
+        0% { opacity: 0; transform: translateY(20px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Typing effect for the welcome message */
+    .welcome-text {
+        font-size: clamp(1.5rem, 5vw, 2.5rem); /* Responsive font size */
+        font-weight: 700;
+        color: #8b0000; /* Dark red for text */
+        overflow: hidden;
+        white-space: nowrap;
+        border-right: 3px solid #8b0000; /* Dark red cursor */
+        animation: typing 4s steps(40, end) forwards, blink 0.75s step-end infinite;
+        margin: 0 auto;
+        max-width: 95%;
+    }
+
+    /* Typing animation keyframes */
+    @keyframes typing {
+        from { width: 0; }
+        to { width: 100%; }
+    }
+
+    /* Blinking cursor effect */
+    @keyframes blink {
+        from, to { border-color: transparent; }
+        50% { border-color: #8b0000; } /* Dark red cursor */
+    }
+
+    /* Pulse background effect with red/gray tones */
+    @keyframes pulseBackground {
+        0% { background: linear-gradient(135deg, #d3d3d3, #808080); } /* Light gray to medium gray */
+        50% { background: linear-gradient(135deg, #ff4040, #696969); } /* Red to dark gray */
+        100% { background: linear-gradient(135deg, #d3d3d3, #808080); }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .dashboard-welcome {
+            padding: 4vw 6vw;
+            margin: 3vw;
+        }
+        .welcome-text {
+            font-size: clamp(1rem, 4vw, 1.8rem);
+        }
+        .dashboard-welcome p {
+            font-size: clamp(0.9rem, 3vw, 1rem);
+            margin-top: 3vw;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .dashboard-welcome {
+            padding: 5vw 7vw;
+            margin: 4vw;
+        }
+        .welcome-text {
+            font-size: clamp(0.8rem, 3.5vw, 1.5rem);
+        }
+        .dashboard-welcome p {
+            font-size: clamp(0.8rem, 2.5vw, 0.9rem);
+            margin-top: 4vw;
+        }
+    }
     </style>
 </head>
 <body>
@@ -628,7 +707,7 @@
                 <li onclick="showContent('dashboard')"><i class="fas fa-chart-line"></i> Dashboard</li>
                 <li onclick="showContent('audit-5s')"><i class="fas fa-clipboard-check"></i> Audit 5S</li>
                 <li onclick="showContent('audit-gemba')"><i class="fas fa-walking"></i> Audit Gemba</li>
-                <li onclick="showContent('tau-emplissage')"><i class="fas fa-tachometer-alt"></i> TAU Emplissage</li>
+                <li onclick="showContent('tau-emplissage')"><i class="fas fa-tachometer-alt"></i> TAUX Remplissage</li>
                 <li onclick="showContent('taux-absenteisme')"><i class="fas fa-user-times"></i> Taux Absenteisme</li>
                 <li onclick="showContent('taux-realisation-5s')"><i class="fas fa-tasks"></i> Taux Realisation 5S</li>
                 <li onclick="showContent('taux-realisation-gemba')"><i class="fas fa-tasks"></i> Taux Realisation Gemba</li>
@@ -916,7 +995,7 @@
             const sectionNames = {
                 'audit-5s': 'Audit 5S',
                 'audit-gemba': 'Audit Gemba',
-                'tau-emplissage': 'TAU Emplissage',
+                'tau-emplissage': 'TAUX Remplissage',
                 'taux-absenteisme': 'Taux Absenteisme',
                 'taux-realisation-5s': 'Taux Realisation 5S',
                 'taux-realisation-gemba': 'Taux Realisation Gemba',
@@ -1052,7 +1131,7 @@
             const sectionNames = {
                 'audit-5s': 'Audit 5S',
                 'audit-gemba': 'Audit Gemba',
-                'tau-emplissage': 'TAU Emplissage',
+                'tau-emplissage': 'TAUX Remplissage',
                 'taux-absenteisme': 'Taux Absenteisme',
                 'taux-realisation-5s': 'Taux Realisation 5S',
                 'taux-realisation-gemba': 'Taux Realisation Gemba',
@@ -1614,7 +1693,7 @@
                 { id: 'dashboard', name: 'Dashboard' },
                 { id: 'audit-5s', name: 'Audit 5S' },
                 { id: 'audit-gemba', name: 'Audit Gemba' },
-                { id: 'tau-emplissage', name: 'TAU Emplissage' },
+                { id: 'tau-emplissage', name: 'TAUX Remplissage' },
                 { id: 'taux-absenteisme', name: 'Taux Absenteisme' },
                 { id: 'taux-realisation-5s', name: 'Taux Realisation 5S' },
                 { id: 'taux-realisation-gemba', name: 'Taux Realisation Gemba' },
@@ -1865,7 +1944,12 @@
                 `,
                 'archive': ``,
                 'dashboard': ``,
-                'kpi-dashboard': `<p>Welcome to the KPI Dashboard. Select an item from the sidebar to view details.</p>`
+               'kpi-dashboard': `
+    <div class="dashboard-welcome" style="animation: fadeIn 1.5s ease-in-out;">
+    <div class="welcome-text">A.C WKW Automotive Tunisie</div>
+    <p style="font-size: clamp(0.9rem, 3vw, 1.2rem); color: #333; margin-top: 20px; animation: fadeIn 2s ease-in-out;">Select an item from the sidebar to view details.</p>
+</div>
+`
             };
 
             // Handle Dashboard section
@@ -2122,3 +2206,4 @@ window.exportToExcel = function(tableId, fileName) {
     </script>
 </body>
 </html>
+
